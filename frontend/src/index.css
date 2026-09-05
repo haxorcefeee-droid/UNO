@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+
+  body {
+    @apply bg-uno-dark text-white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent tap highlight on mobile */
+  button, a { -webkit-tap-highlight-color: transparent; }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar        { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { @apply bg-uno-border rounded-full; }
+
+  /* Safe area insets for notched phones */
+  .safe-top    { padding-top:    env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@layer components {
+  /* ── Cards ────────────────────────────────────────────────────── */
+  .uno-card-base {
+    @apply relative flex flex-col items-center justify-between
+           font-black select-none overflow-hidden rounded-xl
+           border-2 border-white/30 shadow-card transition-all duration-150;
+    perspective: 800px;
+  }
+
+  .uno-card-sm  { @apply w-10 h-[3.5rem] rounded-lg text-[10px]; }
+  .uno-card-md  { @apply w-14 h-20 text-xs; }
+  .uno-card-lg  { @apply w-[4.5rem] h-[6.5rem] text-sm; }
+  /* Responsive: small on mobile, bigger on desktop */
+  .uno-card-responsive {
+    @apply w-12 h-[4.2rem] text-xs
+           sm:w-14 sm:h-[5.2rem] sm:text-sm
+           md:w-[4.5rem] md:h-[6.5rem] md:text-base;
+  }
+
+  .uno-card-playable {
+    @apply ring-2 ring-white/50 cursor-pointer
+           hover:-translate-y-2 hover:scale-105 hover:shadow-card-glow;
+  }
+  .uno-card-selected {
+    @apply ring-2 ring-uno-yellow shadow-glow-yell -translate-y-3 scale-110 z-10;
+  }
+  .uno-card-disabled { @apply opacity-40 cursor-not-allowed; }
+
+  /* ── Buttons ──────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-uno-yellow text-black font-bold rounded-xl
+           px-5 py-3 hover:bg-yellow-400 active:scale-95
+           transition-all duration-150 disabled:opacity-40
+           disabled:cursor-not-allowed text-sm sm:text-base;
+  }
+  .btn-secondary {
+    @apply bg-uno-surface border border-uno-border text-gray-200 font-semibold
+           rounded-xl px-5 py-3 hover:bg-uno-border active:scale-95
+           transition-all duration-150 disabled:opacity-40 text-sm;
+  }
+  .btn-danger {
+    @apply bg-red-700 text-white font-bold rounded-xl px-4 py-2
+           hover:bg-red-600 active:scale-95 transition-all text-sm;
+  }
+
+  /* ── Inputs ───────────────────────────────────────────────────── */
+  .input {
+    @apply w-full bg-uno-surface border border-uno-border text-white rounded-xl
+           px-4 py-3 focus:outline-none focus:border-uno-yellow
+           placeholder-gray-600 transition-colors text-sm sm:text-base;
+  }
+
+  /* ── Panels ───────────────────────────────────────────────────── */
+  .panel {
+    @apply bg-uno-card border border-uno-border rounded-2xl;
+  }
+
+  /* ── Player seat glow ring ───────────────────────────────────── */
+  .active-ring {
+    @apply ring-2 ring-uno-yellow animate-pulse-glow;
+  }
+
+  /* ── UNO logo text ───────────────────────────────────────────── */
+  .uno-logo {
+    @apply font-black tracking-wider;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+  }
+
+  /* ── Coin badge ──────────────────────────────────────────────── */
+  .coin-badge {
+    @apply inline-flex items-center gap-1 bg-yellow-500/20 border border-yellow-500/40
+           text-yellow-300 font-bold rounded-full px-2.5 py-0.5 text-xs;
+  }
+}
+
+@layer utilities {
+  /* Green colour (not in Tailwind by default for our custom value) */
+  .bg-uno-green  { background-color: #009B3A; }
+  .text-uno-green { color: #009B3A; }
+
+  /* Felt table background */
+  .bg-felt { background: radial-gradient(ellipse at center, #1a3a2a 0%, #0d1f16 100%); }
+
+  /* Perspective for 3-D card flip */
+  .perspective { perspective: 800px; }
+
+  /* Truncate with hard max */
+  .truncate-10 { @apply truncate max-w-[2.5rem]; }
+
+  /* Disable scroll bounce on iOS inside a fixed modal */
+  .no-bounce { overscroll-behavior: contain; }
+
+  /* Glassmorphism overlay */
+  .glass {
+    background: rgba(13, 13, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
