@@ -14,6 +14,10 @@ export function getSocket(): Socket {
   return socket;
 }
 
+export function getSocketId(): string | null {
+  return socket?.id ?? null;
+}
+
 export function connectSocket(): void {
   getSocket().connect();
 }

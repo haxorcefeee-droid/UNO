@@ -4,6 +4,8 @@ import { RoomInfo } from '../../types';
 interface Props {
   rooms: RoomInfo[];
   onJoin: (roomId: string) => void;
+  onDelete: (roomId: string) => void;
+  currentUserId: string;
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -22,7 +24,7 @@ const STATUS_EMOJI: Record<string, string> = {
   finished: '⚫',
 };
 
-export default function RoomList({ rooms, onJoin }: Props) {
+export default function RoomList({ rooms, onJoin, onDelete, currentUserId }: Props) {
   if (rooms.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-600 animate-fade-in">
@@ -39,6 +41,7 @@ export default function RoomList({ rooms, onJoin }: Props) {
         const full = room.playerCount >= room.maxPlayers;
         const inProgress = room.gameStatus === 'playing';
         const disabled = full || inProgress;
+        const isHost = room.hostId === currentUserId;
 
         return (
           <div
@@ -61,6 +64,9 @@ export default function RoomList({ rooms, onJoin }: Props) {
                 {room.hasPassword && (
                   <span className="text-[10px] text-gray-500" title="Password protected">🔒</span>
                 )}
+                {isHost && (
+                  <span className="text-[10px] text-uno-yellow" title="You are the host">👑</span>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-xs text-gray-500">
@@ -75,18 +81,34 @@ export default function RoomList({ rooms, onJoin }: Props) {
               </div>
             </div>
 
-            {/* Join button */}
-            <button
-              onClick={() => onJoin(room.id)}
-              disabled={disabled}
-              className={`flex-shrink-0 text-sm font-bold px-3 py-2 rounded-xl
-                         transition-all active:scale-95
-                         ${disabled
-                           ? 'bg-uno-surface text-gray-600 cursor-not-allowed'
-                           : 'bg-uno-blue text-white hover:bg-blue-500'}`}
-            >
-              {inProgress ? 'Playing' : full ? 'Full' : 'Join →'}
-            </button>
+            {/* Action buttons */}
+            <div className="flex items-center gap-2">
+              {/* Delete button (only for host) */}
+              {isHost && !inProgress && (
+                <button
+                  onClick={() => onDelete(room.id)}
+                  className="flex-shrink-0 text-sm font-bold px-3 py-2 rounded-xl
+                             bg-red-600 text-white hover:bg-red-500
+                             transition-all active:scale-95"
+                  title="Delete room"
+                >
+                  🗑️
+                </button>
+              )}
+
+              {/* Join button */}
+              <button
+                onClick={() => onJoin(room.id)}
+                disabled={disabled}
+                className={`flex-shrink-0 text-sm font-bold px-3 py-2 rounded-xl
+                           transition-all active:scale-95
+                           ${disabled
+                             ? 'bg-uno-surface text-gray-600 cursor-not-allowed'
+                             : 'bg-uno-blue text-white hover:bg-blue-500'}`}
+              >
+                {inProgress ? 'Playing' : full ? 'Full' : 'Join →'}
+              </button>
+            </div>
           </div>
         );
       })}

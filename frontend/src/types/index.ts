@@ -44,6 +44,7 @@ export interface RoomInfo {
   hasPassword: boolean;
   wagerCoins: number;
   gameStatus: GameStatus;
+  hostId: string;
 }
 
 export interface RoomState {

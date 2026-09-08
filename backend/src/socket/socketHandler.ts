@@ -178,6 +178,7 @@ export function registerSocketHandlers(io: Server): void {
         hasPassword: !!r.password,
         wagerCoins: r.wagerCoins,
         gameStatus: r.gameState?.status ?? 'waiting',
+        hostId: r.hostId,
       })));
     });
 
@@ -229,6 +230,26 @@ export function registerSocketHandlers(io: Server): void {
       socket.leave(roomId);
       socketRoomMap.delete(socket.id);
       broadcastRoomState(io, roomId);
+    });
+
+    socket.on('room:delete', (roomId: string) => {
+      const room = RoomManager.get(roomId);
+      if (!room) { socket.emit('error', { message: 'Room not found' }); return; }
+      if (room.hostId !== socket.id) { socket.emit('error', { message: 'Only the host can delete the room' }); return; }
+      if (room.gameState?.status === 'playing') { socket.emit('error', { message: 'Cannot delete room while game is in progress' }); return; }
+
+      // Remove all players from the room
+      const pendingPlayers = RoomManager.getPendingPlayers(roomId);
+      pendingPlayers.forEach(player => {
+        if (!RoomManager.isBot(roomId, player.id)) {
+          io.to(player.id).emit('room:deleted', { roomId });
+          socketRoomMap.delete(player.id);
+        }
+      });
+
+      // Delete the room
+      RoomManager.delete(roomId);
+      io.to(roomId).emit('room:deleted', { roomId });
     });
 
     socket.on('room:add_bot', () => {

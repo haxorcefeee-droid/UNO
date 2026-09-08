@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useGameStore } from '../../store/gameStore';
-import { getSocket } from '../../services/socket';
+import { getSocket, getSocketId } from '../../services/socket';
 import RoomList from './RoomList';
 import CreateRoomModal from './CreateRoomModal';
 import JoinRoomModal from './JoinRoomModal';
@@ -19,8 +19,29 @@ export default function LobbyPage() {
     const socket = getSocket();
     socket.emit('room:list');
     const interval = setInterval(() => socket.emit('room:list'), 5000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // Listen for room deletion events
+    socket.on('room:deleted', ({ roomId }: { roomId: string }) => {
+      socket.emit('room:list');
+      setNotification('Room deleted', '🗑️');
+    });
+
+    // Listen for errors
+    socket.on('error', ({ message }: { message: string }) => {
+      setNotification(message, '❌');
+    });
+
+    return () => {
+      clearInterval(interval);
+      socket.off('room:deleted');
+      socket.off('error');
+    };
+  }, [setNotification]);
+
+  const handleDeleteRoom = (roomId: string) => {
+    const socket = getSocket();
+    socket.emit('room:delete', roomId);
+  };
 
   return (
     <div className="min-h-screen bg-uno-dark text-white flex flex-col">
@@ -93,7 +114,12 @@ export default function LobbyPage() {
           </div>
         </div>
 
-        <RoomList rooms={rooms} onJoin={setJoiningRoom} />
+        <RoomList 
+          rooms={rooms} 
+          onJoin={setJoiningRoom} 
+          onDelete={handleDeleteRoom}
+          currentUserId={getSocketId() || ''}
+        />
       </main>
 
       {showCreate && <CreateRoomModal onClose={() => setShowCreate(false)} />}
