@@ -6,7 +6,7 @@ This guide explains how to deploy your UNO game for free using Vercel (frontend)
 
 ✅ **Project Successfully Deployed**
 
-- **Frontend**: https://frontend-hb7kitfgb-tab9.vercel.app
+- **Frontend**: https://frontend-6cgzu17zw-tab9.vercel.app
 - **Backend**: https://triumphant-fascination-production-960d.up.railway.app
 - **Health Check**: https://triumphant-fascination-production-960d.up.railway.app/api/health
 
@@ -131,7 +131,7 @@ Your UNO game is now live and ready to use!
 
 ### Access Your Game
 
-**Frontend URL**: https://frontend-hb7kitfgb-tab9.vercel.app
+**Frontend URL**: https://frontend-6cgzu17zw-tab9.vercel.app
 
 ### Testing Steps
 
@@ -143,7 +143,18 @@ Your UNO game is now live and ready to use!
    - Starting a game
    - Playing cards
    - Using the chat feature
-5. **Verify Socket.IO connections** work properly with multiplayer features
+5. **Test room deletion**:
+   - Create a room as a host
+   - Look for the 👑 crown icon on your room
+   - Click the 🗑️ delete button
+   - Verify the room is removed from the list
+6. **Verify Socket.IO connections** work properly with multiplayer features
+
+### New Features
+
+- **Room Deletion**: Hosts can now delete their own rooms (when not in game)
+- **Host Indication**: Crown icon (👑) shows which rooms you created
+- **Delete Protection**: Cannot delete rooms while games are in progress
 
 ### Monitoring
 
