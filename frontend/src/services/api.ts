@@ -3,9 +3,14 @@ import { User } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+console.log('API Base URL:', API_BASE_URL);
+
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // 30 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Attach JWT to every request
@@ -26,6 +31,14 @@ api.interceptors.response.use(
   },
   error => {
     console.error('API Error:', error.config?.url, error.response?.status, error.response?.data);
+    console.error('Full error:', error);
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timeout - API may be unreachable');
+    }
+    if (error.message === 'Network Error') {
+      console.error('Network error - check API URL and CORS configuration');
+      console.error('Current API URL:', API_BASE_URL);
+    }
     return Promise.reject(error);
   }
 );
