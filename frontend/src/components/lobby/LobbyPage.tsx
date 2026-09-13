@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useGameStore } from '../../store/gameStore';
-import { getSocket, getSocketId } from '../../services/socket';
+import { getSocket } from '../../services/socket';
 import RoomList from './RoomList';
 import CreateRoomModal from './CreateRoomModal';
 import JoinRoomModal from './JoinRoomModal';
@@ -14,11 +14,20 @@ export default function LobbyPage() {
   const { rooms, notification, setNotification } = useGameStore();
   const [showCreate, setShowCreate] = useState(false);
   const [joiningRoom, setJoiningRoom] = useState<string | null>(null);
+  const [socketId, setSocketId] = useState<string>('');
 
   useEffect(() => {
     const socket = getSocket();
     socket.emit('room:list');
     const interval = setInterval(() => socket.emit('room:list'), 5000);
+
+    // Update socket ID when connected
+    const updateSocketId = () => {
+      setSocketId(socket.id || '');
+    };
+
+    socket.on('connect', updateSocketId);
+    updateSocketId(); // Set initial ID if already connected
 
     // Listen for room deletion events
     socket.on('room:deleted', ({ roomId }: { roomId: string }) => {
@@ -33,6 +42,7 @@ export default function LobbyPage() {
 
     return () => {
       clearInterval(interval);
+      socket.off('connect', updateSocketId);
       socket.off('room:deleted');
       socket.off('error');
     };
@@ -114,11 +124,11 @@ export default function LobbyPage() {
           </div>
         </div>
 
-        <RoomList 
-          rooms={rooms} 
-          onJoin={setJoiningRoom} 
+        <RoomList
+          rooms={rooms}
+          onJoin={setJoiningRoom}
           onDelete={handleDeleteRoom}
-          currentUserId={getSocketId() || ''}
+          currentUserId={socketId}
         />
       </main>
 

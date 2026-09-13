@@ -9,6 +9,7 @@ const router = Router();
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, email, password } = req.body;
+    console.log('Registration attempt:', { username, email });
 
     if (!username || !email || !password) {
       res.status(400).json({ error: 'username, email and password are required' });
@@ -44,6 +45,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const user = await UserModel.create(username, email, password);
     const token = signToken({ userId: user.id, username: user.username });
 
+    console.log('Registration successful:', { userId: user.id, username: user.username });
     res.status(201).json({
       token,
       user: UserModel.toPublic(user),

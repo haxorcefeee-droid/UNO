@@ -44,7 +44,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user, token, isLoading: false });
       connectSocket();
     } catch (err: any) {
-      set({ error: err.response?.data?.error ?? 'Registration failed', isLoading: false });
+      console.error('Registration error:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Registration failed';
+      console.error('Error message:', errorMessage);
+      set({ error: errorMessage, isLoading: false });
     }
   },
 

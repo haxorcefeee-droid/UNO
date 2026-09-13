@@ -235,6 +235,7 @@ export function registerSocketHandlers(io: Server): void {
     socket.on('room:delete', (roomId: string) => {
       const room = RoomManager.get(roomId);
       if (!room) { socket.emit('error', { message: 'Room not found' }); return; }
+      console.log(`Delete attempt: socket.id=${socket.id}, room.hostId=${room.hostId}`);
       if (room.hostId !== socket.id) { socket.emit('error', { message: 'Only the host can delete the room' }); return; }
       if (room.gameState?.status === 'playing') { socket.emit('error', { message: 'Cannot delete room while game is in progress' }); return; }
 
@@ -250,6 +251,7 @@ export function registerSocketHandlers(io: Server): void {
       // Delete the room
       RoomManager.delete(roomId);
       io.to(roomId).emit('room:deleted', { roomId });
+      console.log(`Room ${roomId} deleted successfully`);
     });
 
     socket.on('room:add_bot', () => {
