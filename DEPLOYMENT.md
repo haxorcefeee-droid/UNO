@@ -6,7 +6,7 @@ This guide explains how to deploy your UNO game for free using Vercel (frontend)
 
 ✅ **Project Successfully Deployed**
 
-- **Frontend**: https://frontend-hl81beq6u-tab9.vercel.app
+- **Frontend**: https://frontend-cjc8hy5gs-tab9.vercel.app
 - **Backend**: https://triumphant-fascination-production-960d.up.railway.app
 - **Health Check**: https://triumphant-fascination-production-960d.up.railway.app/api/health
 
@@ -131,7 +131,7 @@ Your UNO game is now live and ready to use!
 
 ### Access Your Game
 
-**Frontend URL**: https://frontend-hl81beq6u-tab9.vercel.app
+**Frontend URL**: https://frontend-cjc8hy5gs-tab9.vercel.app
 
 ### Testing Steps
 
