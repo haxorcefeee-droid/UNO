@@ -3,8 +3,6 @@ import { User } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-console.log('API Base URL:', API_BASE_URL);
-
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 second timeout
@@ -19,25 +17,17 @@ api.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  console.log('API Request:', config.method?.toUpperCase(), config.url, config.data);
   return config;
 });
 
-// Log responses
+// Error handling
 api.interceptors.response.use(
-  response => {
-    console.log('API Response:', response.config.url, response.status, response.data);
-    return response;
-  },
+  response => response,
   error => {
-    console.error('API Error:', error.config?.url, error.response?.status, error.response?.data);
-    console.error('Full error:', error);
     if (error.code === 'ECONNABORTED') {
-      console.error('Request timeout - API may be unreachable');
-    }
-    if (error.message === 'Network Error') {
-      console.error('Network error - check API URL and CORS configuration');
-      console.error('Current API URL:', API_BASE_URL);
+      console.error('Request timeout');
+    } else if (error.message === 'Network Error') {
+      console.error('Network error - check API URL');
     }
     return Promise.reject(error);
   }
