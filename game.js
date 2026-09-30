@@ -41,6 +41,7 @@ const dom = {
   game: $("game"),
   fxLayer: $("fxLayer") || document.querySelector(".fx-layer"),
   colorRing: $("colorRing"),
+  dealer: $("dealer"),
   playerName: $("playerName"),
   homeLeaderboard: $("homeLeaderboard"),
   dbPillHome: $("dbPillHome"),
@@ -453,8 +454,10 @@ function renderAll(opts) {
   dom.drawHint.textContent = state.over
     ? "Round finished"
     : myTurn
-      ? anyPlayable ? "Play a card from your hand" : "No plays — tap the draw pile"
+      ? anyPlayable ? "Play a card from your hand" : "No plays — tap the glowing deck!"
       : "Opponent is thinking…";
+  // beacon: no playable card on your turn → point at the deck
+  dom.drawPile.classList.toggle("hint-glow", myTurn && !anyPlayable && !state.over);
 }
 
 // fan via CSS vars so hover lifts still work
@@ -592,6 +595,22 @@ function unoMoment() {
   setTimeout(() => document.body.classList.remove("uno-pulse"), 1400);
 }
 
+// dealer voice lines: a croupier who talks while she works
+function dealerSay(text) {
+  if (reducedMotion()) return;
+  showBubble(text);
+}
+
+// the dealer flicks her arm to toss a card out of the deck
+function tossDealer(el) {
+  const d = el || dom.dealer;
+  if (!d || reducedMotion()) return;
+  d.classList.remove("toss");
+  void d.offsetWidth; // restart the flick
+  d.classList.add("toss");
+  setTimeout(() => d.classList.remove("toss"), 340);
+}
+
 function flipCardIn(el) {
   if (!el || reducedMotion()) return;
   el.classList.remove("still"); // re-enable the flip transition
@@ -706,6 +725,7 @@ async function dealCards() {
   oppEls.forEach((el) => { el.style.opacity = "0"; });
 
   Sound.shuffle();
+  tossDealer(); // shuffle flourish
 
   for (let i = 0; i < 7; i++) {
     // your card
@@ -723,6 +743,7 @@ async function dealCards() {
       rot: fanAngleFor(7, i),
     };
     Sound.deal();
+    tossDealer();
     flyGhost(youGhost, from, to, {
       rot: fanAngleFor(7, i),
       tilt: 18,
@@ -745,6 +766,7 @@ async function dealCards() {
     };
     const toC = { x: oppRect.left, y: oppRect.top, s: 1, rot: -6 };
     Sound.deal();
+    tossDealer();
     flyGhost(oppGhost, fromC, toC, {
       rot: -6,
       ms: FLIGHT_MS,
@@ -808,6 +830,7 @@ async function startRound() {
   setRing(dom.colorRing, state.activeColor);
   setTableRing(state.activeColor);
   announce("Round " + state.round + " — your move", "good");
+  dealerSay(["Dealer: good luck!", "Dealer: cards are hot!", "Dealer: your move"][Math.floor(Math.random() * 3)]);
   Ring.start("you");
   Sound.turn();
 }
@@ -1004,6 +1027,7 @@ async function drawCardsAnimated(who, n) {
       s: who === "cpu" ? 0.6 : 0.5,
     };
     Sound.draw();
+    tossDealer(); // she deals the drawn card
     flyGhost(g, from, to, { rot: who === "cpu" ? -8 : 8, tilt: 14, ms: 620, ease: "easeOutQuad" });
     await wait(200);
 
@@ -1068,6 +1092,7 @@ function commitPlay(card, chosenColor, fromRect) {
     state.awaitingUno = true;
     toast("One card left — press UNO!", "good");
     unoMoment(); // popup + screen pulse: call UNO now!
+    dealerSay("Dealer: call it! UNO!");
   }
 }
 
@@ -1261,6 +1286,7 @@ function playCpuCard(card) {
 // ---------- round end ----------
 async function endRound(winner) {
   state.over = true;
+  dealerSay(winner === "you" ? "Dealer: well played!" : "Dealer: next round's yours");
   state.busy = false;
   Ring.hide();
   const loser = winner === "you" ? "cpu" : "you";
@@ -1518,6 +1544,8 @@ window.Game = {
   fitHand,
   unoMoment,
   setTableRing,
+  tossDealer,
+  sound: Sound,
 };
 
 // ---------- boot ----------

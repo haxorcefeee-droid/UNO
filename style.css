@@ -744,6 +744,178 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   margin-bottom: 0.3rem;
 }
 
+/* ---------- the dealer (casino croupier) ----------
+   Pure-CSS character standing behind the draw pile: she sways while
+   waiting, then flicks her arm to toss every card that is dealt. */
+.dealer {
+  position: relative;
+  width: 64px;
+  height: 84px;
+  margin: 0 auto 0.45rem;
+  animation: dealerSway 3.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45));
+}
+
+@keyframes dealerSway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50% { transform: rotate(2.2deg); }
+}
+
+.dealer .d-head {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffd9b8, #f0b48e);
+  z-index: 2;
+}
+
+.dealer .d-hair {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 16px;
+  border-radius: 17px 17px 4px 4px;
+  background: linear-gradient(180deg, #4a2c1a, #2e1a0e);
+  z-index: 3;
+}
+
+.dealer .d-hair::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #4a2c1a;
+}
+
+.dealer .d-eye {
+  position: absolute;
+  top: 12px;
+  width: 3.5px;
+  height: 5px;
+  border-radius: 2px;
+  background: #2b2320;
+  animation: dealerBlink 4.4s infinite;
+}
+
+.dealer .d-eye.l { left: 9px; }
+.dealer .d-eye.r { right: 9px; }
+
+@keyframes dealerBlink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94%, 97% { transform: scaleY(0.12); }
+}
+
+.dealer .d-lips {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 3.5px;
+  border-radius: 3px;
+  background: #d4553f;
+}
+
+.dealer .d-body {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 34px;
+  border-radius: 14px 14px 8px 8px;
+  background: linear-gradient(180deg, #20262b, #12181c);
+  z-index: 1;
+}
+
+.dealer .d-bow {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 5px;
+  background: #d4af37;
+  clip-path: polygon(0 50%, 45% 0, 45% 100%, 55% 0, 55% 100%, 100% 50%, 55% 100%, 45% 100%);
+}
+
+.dealer .d-arm {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  width: 30px;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #20262b, #12181c);
+  transform-origin: 0 50%;
+  transform: rotate(14deg);
+  z-index: 4;
+  transition: transform 0.28s var(--ease-spring);
+}
+
+.dealer .d-deck {
+  position: absolute;
+  top: 38px;
+  left: calc(50% + 22px);
+  width: 20px;
+  height: 28px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, transparent 62%, #e33b3b 62%, #e33b3b 78%, transparent 78%),
+    linear-gradient(180deg, #fdf8ef, #e9e0cc);
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  z-index: 5;
+  transform: rotate(8deg);
+  animation: deckBounce 2.8s ease-in-out infinite;
+}
+
+@keyframes deckBounce {
+  0%, 100% { transform: rotate(8deg) translateY(0); }
+  50% { transform: rotate(4deg) translateY(-2px); }
+}
+
+/* the toss: arm flicks forward whenever a card leaves the deck */
+.dealer.toss .d-arm { transform: rotate(-34deg); }
+.dealer.toss .d-deck { animation: none; transform: rotate(-16deg) translateY(-4px); }
+
+.dealer .d-tag {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  color: #ffd84d;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 216, 77, 0.4);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* "no plays — draw!" beacon on the draw pile */
+.draw-pile.hint-glow {
+  animation: hintNudge 1.15s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.65), 0 0 28px rgba(255, 216, 77, 0.55), 0 10px 22px rgba(0, 0, 0, 0.45) !important;
+}
+
+@keyframes hintNudge {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-7px) scale(1.06); }
+}
+
 .draw-pile { cursor: pointer; transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-med); }
 
 .draw-pile.playable:hover { transform: translateY(-6px); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5); }
