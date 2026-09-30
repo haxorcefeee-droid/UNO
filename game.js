@@ -10,8 +10,11 @@ const COLORS = ["red", "yellow", "green", "blue"];
 const LS_KEY = "uno-table-player";
 const TURN_SECONDS = 20;
 const WIN_TARGET = 200;
-const FLIGHT_MS = 480;
-const DEAL_MS = 160;
+const FLIGHT_MS = 950;
+const DEAL_MS = 300;
+
+// special username with the SNEAK ability (can see opponents' hands)
+const SNEAK_USER = "saifullahchhajro";
 
 // ---------- state ----------
 const state = {
@@ -306,6 +309,12 @@ function playableCards() {
   return state.you.filter((c) => canPlay(c));
 }
 
+// SNEAK: only saifullahchhajro gets the special opponent-hand reveal
+function isSneakUser() {
+  const name = (state.name || (Auth.user && Auth.user.username) || "").toLowerCase();
+  return name === SNEAK_USER;
+}
+
 // ---------- rendering ----------
 function cardFaceLabel(card) {
   return card.color === "wild" ? "★" : cardLabel(card);
@@ -339,10 +348,35 @@ function renderCard(card, opts) {
   el.appendChild(inner);
   el.appendChild(tl);
   el.appendChild(br);
+  face3D(el, opts);
   return el;
 }
 
-function cardBack() {
+// 3D flip-in: card spins from its back to its face (pure CSS 3D, cheap on mobile)
+// Structure: .card > .card-flip > (.card-face.back-face + .card-face.front-face > original content)
+function face3D(el, opts) {
+  opts = opts || {};
+  if (reducedMotion() || opts.noFlip) return;
+  const flip = document.createElement("div");
+  flip.className = "card-flip";
+  const back = document.createElement("div");
+  back.className = "card-face back-face";
+  back.appendChild(Object.assign(document.createElement("span"), { className: "bf-val", textContent: "UNO" }));
+  const front = document.createElement("div");
+  front.className = "card-face front-face";
+  while (el.firstChild) front.appendChild(el.firstChild); // move .inner + corners in
+  flip.appendChild(back);
+  flip.appendChild(front);
+  el.appendChild(flip);
+  el.classList.add("flip3d");
+  if (!opts.still) {
+    // start face-down, then flip over once painted
+    el.classList.add("face-down");
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("face-down")));
+  }
+}
+
+function cardBack(opts) {
   const el = document.createElement("div");
   el.className = "card back";
   const inner = document.createElement("div");
@@ -352,6 +386,7 @@ function cardBack() {
   val.textContent = "UNO";
   inner.appendChild(val);
   el.appendChild(inner);
+  face3D(el, opts);
   return el;
 }
 
@@ -364,7 +399,7 @@ function syncDiscard() {
   dom.discardPile.innerHTML = "";
   const top6 = state.discard.slice(-6);
   top6.forEach((card, i) => {
-    const el = renderCard(card);
+    const el = renderCard(card, { noFlip: true }); // pile must not re-flip on every render
     const isTop = i === top6.length - 1;
     el.style.setProperty("--tilt", (isTop ? topTilt() : (i % 2 ? 1 : -1) * (2 + i)) + "deg");
     dom.discardPile.appendChild(el);
@@ -386,11 +421,17 @@ function renderAll(opts) {
   dom.youSeat.classList.toggle("active-turn", state.current === "you" && !state.over);
 
   dom.opponentHand.innerHTML = "";
-  state.cpu.forEach((_, i) => {
-    const back = cardBack();
-    if (opts.cpuDrew && i === state.cpu.length - 1) back.classList.add("card-new");
+  const sneaking = isSneakUser();
+  state.cpu.forEach((c, i) => {
+    // SNEAK ability: saifullahchhajro sees the opponent's real cards face-up
+    const isNew = opts.cpuDrew && i === state.cpu.length - 1;
+    const back = sneaking
+      ? renderCard(c, { still: true, sneak: true })
+      : cardBack({ still: !isNew }); // only a freshly drawn card flips in
+    if (isNew) back.classList.add("card-new");
     dom.opponentHand.appendChild(back);
   });
+  dom.opponentHand.classList.toggle("sneaking", sneaking);
 
   syncDiscard();
 
@@ -400,8 +441,10 @@ function renderAll(opts) {
   dom.playerHand.classList.toggle("my-turn", myTurn);
   state.you.forEach((card, i) => {
     const can = myTurn && canPlay(card);
-    const el = renderCard(card, { playable: can, locked: myTurn && !can && anyPlayable });
-    if (opts.youDrew && i === state.you.length - 1) el.classList.add("card-new");
+    const isNew = opts.youDrew && i === state.you.length - 1;
+    // every card renders face-up; only the freshly drawn card does the 3D flip-in
+    const el = renderCard(card, { playable: can, locked: myTurn && !can && anyPlayable, still: !isNew });
+    if (isNew) el.classList.add("card-new");
     dom.playerHand.appendChild(el);
   });
   applyFan();
@@ -419,6 +462,7 @@ function applyFan() {
   const cards = Array.prototype.slice.call(dom.playerHand.children);
   const n = cards.length;
   if (!n) return;
+  fitHand(n); // resize cards so the whole hand fits any phone width
   const mid = (n - 1) / 2;
   const spread = Math.min(5, 40 / n);
   cards.forEach((el, i) => {
@@ -463,12 +507,12 @@ function announce(text, kind) {
       targets: dom.announce,
       scale: [0.6, 1.12, 1],
       opacity: [0, 1],
-      duration: 420,
+      duration: 760,
       easing: "easeOutBack",
     });
   }
   clearTimeout(announce._t);
-  announce._t = setTimeout(() => { dom.announce.hidden = true; }, 1500);
+  announce._t = setTimeout(() => { dom.announce.hidden = true; }, 2400);
 }
 
 // ---------- rect helpers ----------
@@ -479,7 +523,7 @@ function centerOf(rect) {
 
 // ---------- ghost cards + flights (anime.js) ----------
 function ghostEl(card, w, h, faceUp) {
-  const el = faceUp ? renderCard(card) : cardBack();
+  const el = faceUp ? renderCard(card, { noFlip: true }) : cardBack({ noFlip: true });
   el.classList.add("ghost");
   el.style.width = w + "px";
   el.style.height = h + "px";
@@ -513,6 +557,7 @@ function flyGhost(el, from, to, opts) {
       translateX: [0, to.x - from.x],
       translateY: [0, to.y - from.y],
       rotate: [0, rot],
+      rotateX: [opts.tilt || 0, 0],
       scale: [from.s || 1, to.s || 1],
       duration: ms,
       easing: opts.ease || "easeOutCubic",
@@ -538,6 +583,33 @@ function flyGhost(el, from, to, opts) {
 }
 
 // ---------- seat turn timer (radar rings around each avatar) ----------
+function flipCardIn(el) {
+  if (!el || reducedMotion()) return;
+  el.classList.remove("still"); // re-enable the flip transition
+  el.classList.add("face-down");
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("face-down")));
+}
+
+// keep any hand on-screen: shrink --card-w as the hand grows (mobile-friendly)
+function fitHand(n) {
+  const avail = (document.documentElement.clientWidth || window.innerWidth || 375) - 34;
+  const w = Math.max(42, Math.min(108, Math.floor(avail / (1 + Math.max(n - 1, 0) * 0.7))));
+  document.documentElement.style.setProperty("--card-w", w + "px");
+}
+
+// multiplayer helper: fly a ghost card from an opponent's seat onto the discard pile
+async function flyCardToDiscard(containerEl, rot) {
+  if (!containerEl || !dom.discardPile) return;
+  const fromR = rectOf(containerEl);
+  const toR = rectOf(dom.discardPile);
+  const g = ghostEl(null, 96, 144, false);
+  await flyGhost(
+    g,
+    { x: fromR.left + fromR.width / 2 - 48, y: fromR.top, s: 1 },
+    { x: toR.left, y: toR.top, s: 1 },
+    { rot: rot || topTilt(), tilt: 22, ms: FLIGHT_MS, ease: "easeOutCubic" }
+  );
+}
 const Ring = {
   running: false,
   endAt: 0,
@@ -644,9 +716,13 @@ async function dealCards() {
     Sound.deal();
     flyGhost(youGhost, from, to, {
       rot: fanAngleFor(7, i),
+      tilt: 18,
       ms: FLIGHT_MS,
       ease: "easeOutQuad",
-    }).then(() => { handEls[i].style.opacity = "1"; });
+    }).then(() => {
+      handEls[i].style.opacity = "1";
+      flipCardIn(handEls[i]); // 3D flip onto its face as it lands
+    });
 
     await wait(DEAL_MS);
 
@@ -664,7 +740,10 @@ async function dealCards() {
       rot: -6,
       ms: FLIGHT_MS,
       ease: "easeOutQuad",
-    }).then(() => { oppEls[i].style.opacity = "1"; });
+    }).then(() => {
+      oppEls[i].style.opacity = "1";
+      if (!isSneakUser()) flipCardIn(oppEls[i]);
+    });
 
     await wait(DEAL_MS);
   }
@@ -712,7 +791,7 @@ async function startRound() {
       const r = rectOf(dom.discardPile);
       return { x: r.left, y: r.top, s: 1 };
     })(),
-    { rot: topTilt(), ms: 420, ease: "easeOutCubic" }
+    { rot: topTilt(), tilt: 26, ms: 900, ease: "easeOutCubic" }
   );
   syncDiscard();
 
@@ -724,7 +803,7 @@ async function startRound() {
 }
 
 function cpuGoLater() {
-  setTimeout(cpuTurn, 900);
+  setTimeout(cpuTurn, 1300);
 }
 
 function nextTurn() {
@@ -808,17 +887,17 @@ async function playCard(who, card, chosenColor, fromRect) {
     ghostEl(card, 96, 144, true),
     from,
     to,
-    { rot: topTilt(), ms: FLIGHT_MS, ease: "easeOutCubic", flip: who === "cpu" }
+    { rot: topTilt(), tilt: 22, ms: FLIGHT_MS, ease: "easeOutCubic", flip: who === "cpu" }
   );
   settleTopCard();
   // crunch: shake the victim's hand when they draw, pop the pile on slams
   if (who === "cpu" && (card.value === "draw2" || card.value === "wild4")) {
     dom.opponentHand.classList.add("opp-shake");
-    setTimeout(() => dom.opponentHand.classList.remove("opp-shake"), 420);
+    setTimeout(() => dom.opponentHand.classList.remove("opp-shake"), 520);
   }
   if (who === "you" && (card.value === "draw2" || card.value === "wild4")) {
     dom.playerHand.classList.add("shake");
-    setTimeout(() => dom.playerHand.classList.remove("shake"), 420);
+    setTimeout(() => dom.playerHand.classList.remove("shake"), 520);
   }
   state.busy = false;
 
@@ -838,7 +917,7 @@ function settleTopCard() {
   const top = dom.discardPile.lastElementChild;
   if (!top) return;
   top.classList.add("pop");
-  setTimeout(() => top.classList.remove("pop"), 320);
+  setTimeout(() => top.classList.remove("pop"), 480);
 }
 
 // pulsing ring around the discard pile showing the running color
@@ -879,7 +958,7 @@ function playSpecialFX(kind, subtitle) {
     s.style.animationDelay = Math.random() * 0.12 + "s";
     burst.appendChild(s);
   }
-  setTimeout(() => burst.remove(), 1100);
+  setTimeout(() => burst.remove(), 1900);
 }
 
 // animated draw: ghost flies from the deck to the seat
@@ -904,8 +983,8 @@ async function drawCardsAnimated(who, n) {
       s: who === "cpu" ? 0.6 : 0.5,
     };
     Sound.draw();
-    flyGhost(g, from, to, { rot: who === "cpu" ? -8 : 8, ms: 320, ease: "easeOutQuad" });
-    await wait(120);
+    flyGhost(g, from, to, { rot: who === "cpu" ? -8 : 8, tilt: 14, ms: 620, ease: "easeOutQuad" });
+    await wait(200);
 
     if (who === "you") state.you.push(card);
     else state.cpu.push(card);
@@ -1119,7 +1198,7 @@ function cpuTurn() {
       if (state.over) return;
       const drawn = state.cpu[state.cpu.length - 1];
       if (drawn && canPlay(drawn)) {
-        setTimeout(() => { if (!state.over) playCpuCard(drawn); }, 500);
+        setTimeout(() => { if (!state.over) playCpuCard(drawn); }, 900);
       } else {
         nextTurn();
       }
@@ -1131,7 +1210,7 @@ function cpuTurn() {
   const nonWild = playable.filter((c) => c.color !== "wild");
   const pool = nonWild.length ? nonWild : playable;
   pool.sort((a, b) => cardPoints(b) - cardPoints(a));
-  setTimeout(() => { if (!state.over) playCpuCard(pool[0]); }, 500);
+  setTimeout(() => { if (!state.over) playCpuCard(pool[0]); }, 900);
 }
 
 function playCpuCard(card) {
@@ -1403,8 +1482,14 @@ function setPill(text, cls) {
   dom.dbPillHome.className = "db-pill " + (cls || "");
 }
 
-// expose FX helper for room.js multiplayer announcements
-window.Game = { playSpecialFX };
+// expose FX helpers for room.js multiplayer announcements
+window.Game = {
+  playSpecialFX,
+  flyCardToDiscard,
+  flipCardIn,
+  make3D: face3D,
+  fitHand,
+};
 
 // ---------- boot ----------
 (async function boot() {

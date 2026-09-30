@@ -15,6 +15,10 @@ import {
 } from "./uno-engine.js";
 
 // ---------- helpers ----------
+// SNEAK ability: this username may see every opponent's hand in multiplayer.
+// The server is the only authority for this — clients can't opt in.
+const SNEAK_USER = "saifullahchhajro";
+
 export function json(status, body) {
   return { status, body };
 }
@@ -71,8 +75,9 @@ function roomCode() {
   return c;
 }
 
-export function publicGameView(game, viewerId) {
+export function publicGameView(game, viewerId, viewerUsername) {
   if (!game) return null;
+  const canSneak = String(viewerUsername || "").toLowerCase() === SNEAK_USER;
   return {
     current: game.current,
     dir: game.dir,
@@ -88,7 +93,7 @@ export function publicGameView(game, viewerId) {
       username: p.username,
       isBot: p.isBot,
       handCount: p.hand.length,
-      hand: p.userId === viewerId ? p.hand : undefined,
+      hand: p.userId === viewerId || canSneak ? p.hand : undefined,
     })),
   };
 }
@@ -318,7 +323,8 @@ export async function handleApi(req, res, url) {
           },
           players,
           you: { id: user.id, seat, username: user.username, coins: user.coins },
-          game: publicGameView(game, user.id),
+          game: publicGameView(game, user.id, user.username),
+          sneak: String(user.username || "").toLowerCase() === SNEAK_USER,
         });
       }
 
@@ -390,7 +396,7 @@ export async function handleApi(req, res, url) {
           await runBotsAndSettle(await findRoomById(room.id));
         }
         const fresh = await findRoomById(room.id);
-        return json(200, { ok: true, game: publicGameView(fresh.game_state, user.id) });
+        return json(200, { ok: true, game: publicGameView(fresh.game_state, user.id, user.username) });
       }
     }
 
