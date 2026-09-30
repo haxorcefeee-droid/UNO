@@ -59,8 +59,28 @@ export function newGame(players, startingSeat) {
   for (let i = 0; i < 7; i++) {
     for (const p of game.players) p.hand.push(deck.pop());
   }
+  // starter card must be a plain number card. If the non-wild/non-action
+  // cards are buried under the players' 14 cards, redealing from the same
+  // deck can exhaust it — then take a plain card from a dealt hand (swap
+  // keeps 7 cards per player; distribution and rules unchanged).
   let first = deck.pop();
   while (first.color === "wild" || isNaN(Number(first.value))) {
+    if (deck.length === 0) {
+      let swapped = false;
+      outer: for (const p of game.players) {
+        for (let i = 0; i < p.hand.length; i++) {
+          const c = p.hand[i];
+          if (c.color !== "wild" && !isNaN(Number(c.value))) {
+            p.hand[i] = first; // rejected starter goes into the hand
+            first = c;        // plain card becomes the starter
+            swapped = true;
+            break outer;
+          }
+        }
+      }
+      if (!swapped) break; // degenerate: no plain card exists anywhere
+      break;
+    }
     deck.unshift(first);
     first = deck.pop();
   }

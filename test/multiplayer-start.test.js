@@ -165,7 +165,8 @@ test("two humans can start, poll state, and play a card with bot replies", async
   assert.equal(game.players.length, 2);
   assert.ok(game.players.every((p) => p.handCount === 7));
 
-  // whose turn is it? have that player play their first legal card
+  // whose turn is it? play a legal card; if none exists (legitimate UNO),
+  // draw and pass — the engine advances the turn either way
   const current = game.current;
   const viewerToken = current === 0 ? alice : bob;
   const myState = await call("GET", "/api/rooms/state/" + code, viewerToken);
@@ -174,13 +175,23 @@ test("two humans can start, poll state, and play a card with bot replies", async
   const idx = myHand.findIndex((c) =>
     c.color === "wild" || c.color === myState.body.game.activeColor || c.value === top.value
   );
-  assert.ok(idx >= 0, "the starting player always has a legal move");
 
-  const played = await call("POST", "/api/rooms/play", viewerToken, { roomId, index: idx });
-  assert.equal(played.status, 200, "play a card -> " + JSON.stringify(played.body));
-  assert.ok(played.body.game, "game view returned after play");
+  if (idx >= 0) {
+    const played = await call("POST", "/api/rooms/play", viewerToken, { roomId, index: idx });
+    assert.equal(played.status, 200, "play a card -> " + JSON.stringify(played.body));
+    if (played.body.needColor) {
+      // wild played: the engine waits for a color pick, exactly like the client
+      const picked = await call("POST", "/api/rooms/color", viewerToken, { roomId, color: "red" });
+      assert.equal(picked.status, 200, "pick color -> " + JSON.stringify(picked.body));
+    } else {
+      assert.ok(played.body.game, "game view returned after play");
+    }
+  } else {
+    const drawn = await call("POST", "/api/rooms/draw", viewerToken, { roomId });
+    assert.equal(drawn.status, 200, "no legal move -> draw -> " + JSON.stringify(drawn.body));
+  }
 
-  // after the human's move the engine/bots must have advanced the game
+  // after the human's move (or draw) the engine/bots must have advanced the game
   const after = await call("GET", "/api/rooms/state/" + code, alice);
   assert.ok(after.body.game.lastAction, "a lastAction was recorded");
 });
