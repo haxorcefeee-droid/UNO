@@ -659,6 +659,26 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .opp-shake { animation: handShake 0.4s ease; }
 
+/* ---------- room error banner ---------- */
+.room-error {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 92vw;
+  padding: 0.55rem 1rem;
+  border-radius: 12px;
+  background: rgba(60, 12, 12, 0.92);
+  border: 1px solid rgba(255, 120, 120, 0.5);
+  color: #ffb0a1;
+  font-weight: 800;
+  font-size: 0.8rem;
+  text-align: center;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  animation: toastIn var(--t-med) var(--ease-out);
+}
+
 /* ---------- waiting room ---------- */
 .waiting {
   position: absolute;
