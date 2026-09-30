@@ -3,11 +3,8 @@
   "buildCommand": "node scripts/build.mjs",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" }
-  ],
   "functions": {
-    "api/index.js": { "maxDuration": 15 }
+    "api/**/*.js": { "maxDuration": 15 }
   },
   "headers": [
     {

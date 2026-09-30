@@ -151,7 +151,8 @@ body {
   margin-bottom: 0.4rem;
 }
 
-.tagline { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.6rem; }
+.tagline { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.8rem; }
+#rulesBtn { margin-bottom: 1.4rem; }
 
 .home-card {
   background: var(--panel);

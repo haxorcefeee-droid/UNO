@@ -7,6 +7,7 @@ import {
   createRoom, listPublicRooms, findRoomByCode, findRoomById,
   joinRoomPlayer, roomPlayers, leaveRoom, setReady, bumpRoom,
   saveGameState, saveGameStateCAS, deleteRoom,
+  ensureSchemaOnce, databaseStatus, publicDbError,
 } from "./db.js";
 import {
   newGame, playCard, pickColor, drawTurn, passTurn,
@@ -176,8 +177,13 @@ export async function handleApi(req, res, url) {
   const body = req.method === "POST" || req.method === "PUT" ? await readBody(req) : {};
 
   try {
-    // ----- health -----
-    if (url.pathname === "/api/health") return json(200, { ok: true });
+    // ----- health (reports the real database error) -----
+    if (url.pathname === "/api/health") {
+      const status = await databaseStatus();
+      return json(status.ok ? 200 : 500, status);
+    }
+
+    await ensureSchemaOnce();
 
     // ----- auth (public) -----
     if (parts[1] === "auth") {
@@ -391,6 +397,6 @@ export async function handleApi(req, res, url) {
     return json(404, { error: "Not found" });
   } catch (err) {
     console.error("API error:", err);
-    return json(500, { error: err.message || "Internal server error" });
+    return json(500, { error: publicDbError(err) });
   }
 }

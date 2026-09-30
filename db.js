@@ -1,15 +1,62 @@
 import { neon } from "@neondatabase/serverless";
 
-const { DATABASE_URL } = process.env;
+// Vercel’s Neon integration writes several of these. Read them when a query
+// runs so a value added after import (or via .env) is still picked up.
+const CONNECTION_ENV_KEYS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+];
+
+export function normalizeConnectionString(value) {
+  if (value == null) return "";
+  let s = String(value).replace(/^\uFEFF/, "").trim();
+  s = s.replace(/^(?:DATABASE_URL|POSTGRES_URL|POSTGRES_PRISMA_URL)\s*=\s*/i, "").trim();
+  const unquote = (v) =>
+    ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))
+      ? v.slice(1, -1).trim()
+      : v;
+  s = unquote(s);
+  s = s.replace(/^psql\s+/i, "").trim();
+  return unquote(s);
+}
+
+export function resolveConnectionString(env = process.env) {
+  for (const key of CONNECTION_ENV_KEYS) {
+    const url = normalizeConnectionString(env[key]);
+    if (url) return { url, source: key };
+  }
+  return { url: "", source: null };
+}
+
+export function publicDbError(err) {
+  const raw = String(err?.message || err || "Database error");
+  const message = raw.replace(/postgres(?:ql)?:\/\/\S+/gi, "postgresql://***");
+  if (/not a valid URL/i.test(message) || /should be: postgresql:\/\//i.test(message)) {
+    return "DATABASE_URL is set, but it is not a valid Neon connection string. Paste only the postgresql:// URL from the Neon dashboard, without quotes. If the password contains @ # or %, URL-encode it.";
+  }
+  if (/DATABASE_URL is not set/i.test(message) || /No database connection string/i.test(message)) {
+    return "DATABASE_URL is not set on this deployment. In Vercel open Settings → Environment Variables, add DATABASE_URL for Production (the pooled Neon URL), save, then redeploy. A deploy from before the variable was saved will not see it.";
+  }
+  return message;
+}
+
 let sql = null;
+let sqlUrl = null;
 
 export function getSql() {
-  if (!DATABASE_URL) {
+  const { url } = resolveConnectionString();
+  if (!url) {
     throw new Error(
       "DATABASE_URL is not set. Add your Neon connection string in Settings → Environment."
     );
   }
-  if (!sql) sql = neon(DATABASE_URL);
+  if (!sql || sqlUrl !== url) {
+    sql = neon(url);
+    sqlUrl = url;
+  }
   return sql;
 }
 
@@ -52,7 +99,7 @@ export async function ensureSchema() {
       id          SERIAL PRIMARY KEY,
       code        TEXT        NOT NULL UNIQUE,
       host_id     INTEGER     NOT NULL REFERENCES users(id),
-      status      TEXT        NOT NULL DEFAULT 'lobby',  -- lobby | playing | finished
+      status      TEXT        NOT NULL DEFAULT 'lobby',
       max_players INTEGER     NOT NULL DEFAULT 4,
       ante        INTEGER     NOT NULL DEFAULT 25,
       is_public   BOOLEAN     NOT NULL DEFAULT true,
@@ -86,6 +133,24 @@ export function ensureSchemaOnce() {
     });
   }
   return schemaPromise;
+}
+
+export async function databaseStatus() {
+  const { url, source } = resolveConnectionString();
+  if (!url) {
+    return {
+      ok: false,
+      error: publicDbError(new Error("DATABASE_URL is not set")),
+    };
+  }
+  try {
+    await ensureSchemaOnce();
+    const sql = getSql();
+    await sql`SELECT 1 AS ok`;
+    return { ok: true, via: source };
+  } catch (err) {
+    return { ok: false, via: source, error: publicDbError(err) };
+  }
 }
 
 // ---------- scores (v1 leaderboard) ----------
@@ -254,18 +319,20 @@ export async function setReady(roomId, userId, ready) {
   `;
 }
 
-export async function bumpRoom(roomId, patch) {
+const ROOM_PATCH_COLUMNS = new Set(["status", "host_id", "ante", "is_public", "max_players"]);
+
+export async function bumpRoom(roomId, patch = {}) {
   const sql = getSql();
-  const keys = Object.keys(patch);
+  const keys = Object.keys(patch).filter((k) => ROOM_PATCH_COLUMNS.has(k));
   if (!keys.length) {
     await sql`UPDATE rooms SET version = version + 1, updated_at = now() WHERE id = ${roomId}`;
     return;
   }
   const sets = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");
   const values = keys.map((k) => patch[k]);
-  await getSql()(
+  await sql.query(
     `UPDATE rooms SET version = version + 1, updated_at = now(), ${sets} WHERE id = $1`,
-    values.length ? [roomId, ...values] : [roomId]
+    [roomId, ...values]
   );
 }
 
