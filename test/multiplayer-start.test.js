@@ -200,3 +200,34 @@ test("non-host cannot start; room state works for every joined player", async ()
   assert.ok(bobState.body.game.players[bobState.body.game.current]);
   assert.ok(Array.isArray(bobState.body.game.players.find((p) => p.username === "bob_h3").hand));
 });
+
+test("SNEAK: only the special username sees opponents' hands and gets the flag", async () => {
+  const sneak = await register("saifullahchhajro"); // special username
+  const plain = await register("plain_user");
+  const created = await call("POST", "/api/rooms/create", sneak, { ante: 0, maxPlayers: 2 });
+  const code = created.body.room.code;
+  const roomId = created.body.room.id;
+  await call("POST", "/api/rooms/join", plain, { code });
+  assert.equal((await call("POST", "/api/rooms/start", sneak, { roomId })).status, 200);
+
+  // the special username: flag on + every opponent hand included
+  const sneakState = await call("GET", "/api/rooms/state/" + code, sneak);
+  assert.equal(sneakState.body.sneak, true, "sneak flag set for special username");
+  const sneakGame = sneakState.body.game;
+  const opponents = sneakGame.players.filter((p) => p.username !== "saifullahchhajro");
+  assert.ok(opponents.length >= 1);
+  for (const p of opponents) {
+    assert.ok(Array.isArray(p.hand) && p.hand.length === 7, "opponent hand revealed to sneaker");
+  }
+
+  // a normal username: no flag, no opponent hands
+  const plainState = await call("GET", "/api/rooms/state/" + code, plain);
+  assert.equal(plainState.body.sneak, false, "no sneak flag for normal users");
+  const plainOpponent = plainState.body.game.players.find((p) => p.username === "saifullahchhajro");
+  assert.equal(plainOpponent.hand, undefined, "opponent hands hidden from normal users");
+
+  // query-param form of state works too (Vercel-safe polling)
+  const viaQuery = await call("GET", "/api/rooms/state?code=" + code, sneak);
+  assert.equal(viaQuery.status, 200);
+  assert.equal(viaQuery.body.room.code, code);
+});
