@@ -6,6 +6,7 @@ import {
   getSessionUser, deleteSession, addCoins, recordResult,
   createRoom, listPublicRooms, findRoomByCode, findRoomById,
   joinRoomPlayer, roomPlayers, leaveRoom, setReady, bumpRoom,
+  sendChat, getChat,
   saveGameState, saveGameStateCAS, deleteRoom,
   ensureSchemaOnce, databaseStatus, publicDbError,
 } from "./db.js";
@@ -307,6 +308,25 @@ export async function handleApi(req, res, url) {
         await setReady(room.id, user.id, !!body.ready);
         await bumpRoom(room.id);
         return json(200, { ok: true });
+      }
+
+      // ----- room chat (members only) -----
+      if (parts[2] === "chat" && req.method === "POST") {
+        const room = await findRoomByCode(String(body.code || parts[3] || "").toUpperCase());
+        if (!room) return json(404, { error: "Room not found" });
+        const members = await roomPlayers(room.id);
+        if (!members.some((m) => m.id === user.id)) return json(403, { error: "Join the room to chat" });
+        const text = String(body.body || "").trim().slice(0, 200);
+        if (!text) return json(400, { error: "Message is empty" });
+        const msg = await sendChat(room.id, user.username, text);
+        return json(201, { ok: true, msg });
+      }
+
+      if (parts[2] === "chat" && req.method === "GET") {
+        const room = await findRoomByCode(String(parts[3] || url.searchParams.get("code") || "").toUpperCase());
+        if (!room) return json(404, { error: "Room not found" });
+        const msgs = await getChat(room.id, 30);
+        return json(200, { msgs });
       }
 
       if (parts[2] === "state" && req.method === "GET") {

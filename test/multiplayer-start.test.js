@@ -92,6 +92,10 @@ mock.module("../db.js", {
       return true;
     },
     async deleteRoom(roomId) { rooms.delete(roomId); seats.delete(roomId); },
+    async sendChat(roomId, username, body) {
+      return { id: nextRoomId++ * 1000, username, body, at: new Date().toISOString() };
+    },
+    async getChat(roomId, limit = 30) { return []; },
     async ensureSchemaOnce() {},
     async databaseStatus() { return { ok: true, engine: "mock" }; },
     publicDbError(err) { return err && err.message ? err.message : "db error"; },

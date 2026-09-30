@@ -133,6 +133,21 @@
 
       <!-- live game (mirrors the vs-bot table) -->
       <div id="mpGame" hidden>
+        <!-- chat: collapsible panel, bottom-right -->
+        <div class="chat" id="mpChat">
+          <button class="chat-fab" id="chatFab" type="button" aria-label="Open chat">💬 <span class="chat-unread" id="chatUnread" hidden>0</span></button>
+          <div class="chat-panel" id="chatPanel" hidden>
+            <div class="chat-head">
+              <b>Room chat</b>
+              <button class="chat-close" id="chatClose" type="button" aria-label="Close chat">✕</button>
+            </div>
+            <div class="chat-log" id="chatLog"><div class="chat-empty">Say hi to your table 👋</div></div>
+            <form class="chat-form" id="chatForm">
+              <input id="chatInput" maxlength="200" placeholder="Type a message…" autocomplete="off" />
+              <button class="btn btn-primary chat-send" type="submit">Send</button>
+            </form>
+          </div>
+        </div>
         <div class="opponent-zone" id="mpOpponents"></div>
 
         <div class="center-zone">
@@ -274,10 +289,10 @@
     <div class="modal">
       <h3>Choose a color</h3>
       <div class="color-grid">
-        <button class="color-choice red" data-color="red" aria-label="Red"></button>
-        <button class="color-choice yellow" data-color="yellow" aria-label="Yellow"></button>
-        <button class="color-choice green" data-color="green" aria-label="Green"></button>
-        <button class="color-choice blue" data-color="blue" aria-label="Blue"></button>
+        <button class="color-choice red" data-color="red" data-label="RED" aria-label="Red"></button>
+        <button class="color-choice yellow" data-color="yellow" data-label="YELLOW" aria-label="Yellow"></button>
+        <button class="color-choice green" data-color="green" data-label="GREEN" aria-label="Green"></button>
+        <button class="color-choice blue" data-color="blue" data-label="BLUE" aria-label="Blue"></button>
       </div>
     </div>
   </div>
