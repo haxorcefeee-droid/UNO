@@ -538,7 +538,18 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 }
 
 /* ---------- seats ---------- */
-.opponent-zone { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+.opponent-zone {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.45rem;
+  max-width: 100%;
+}
+
+/* multiplayer seats line up in a clean wrapping row */
+#mpOpponents { flex-direction: row; flex-wrap: wrap; gap: 0.45rem; }
 
 .seat {
   display: flex;
@@ -596,6 +607,10 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 }
 
 .seat-ring.radar::after { opacity: 1; animation: radarSpin 2.4s linear infinite; }
+
+/* radar sweep slightly faster while the clock is under 10s */
+.seat-ring.radar.racing::after,
+.seat .racing .seat-ring.radar::after { animation-duration: 1.4s; }
 
 @keyframes radarSpin { to { transform: rotate(360deg); } }
 
@@ -1427,6 +1442,122 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .save-note.ok { color: #2f8f4e; }
 .save-note.err { color: #c22e2c; }
 
+/* ---------- victory party (multiplayer) ---------- */
+.victory {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgba(20, 40, 24, 0.55), rgba(4, 10, 6, 0.88));
+  overflow: hidden;
+  animation: victoryIn 0.45s var(--ease-out);
+}
+
+@keyframes victoryIn { from { opacity: 0; } to { opacity: 1; } }
+
+.victory-inner {
+  position: relative;
+  text-align: center;
+  padding: 1.4rem 2rem;
+  border-radius: 22px;
+  background: rgba(8, 20, 12, 0.82);
+  border: 1px solid rgba(255, 216, 77, 0.45);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  max-width: 92vw;
+}
+
+.victory-title {
+  font-size: clamp(1.6rem, 7vw, 3rem);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  color: #ffd84d;
+  text-shadow: 0 3px 0 #b3541e, 0 10px 34px rgba(0, 0, 0, 0.6);
+}
+
+.victory-wins {
+  margin-top: 0.5rem;
+  font-size: clamp(0.75rem, 3vw, 0.95rem);
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+/* fireworks: rising spark that pops into a hue-varied ring */
+.fw {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--fw-hue, 40) 100% 65%);
+  box-shadow: 0 0 12px hsl(var(--fw-hue, 40) 100% 65%);
+  animation: fwPop 1.5s ease-out forwards;
+}
+
+@keyframes fwPop {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  15% { opacity: 1; }
+  55% {
+    transform: translateY(-46px) scale(1);
+    box-shadow:
+      0 -14px 0 2px hsl(var(--fw-hue) 100% 65%),
+      12px -8px 0 1px hsl(var(--fw-hue) 100% 65%),
+      -12px -8px 0 1px hsl(var(--fw-hue) 100% 65%),
+      0 0 18px hsl(var(--fw-hue) 100% 70%);
+  }
+  100% { transform: translateY(-64px) scale(0.2); opacity: 0; }
+}
+
+/* confetti: falling paper strips */
+.confetti {
+  position: absolute;
+  top: -14px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-20px) rotate(0deg); }
+  100% { transform: translateY(105vh) rotate(720deg); }
+}
+
+/* ---------- room wins panel (lobby) ---------- */
+.wins-panel {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 216, 77, 0.3);
+  border-radius: 14px;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+}
+
+.wins-panel > b {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd84d;
+  margin-bottom: 0.45rem;
+}
+
+.wins-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.22rem 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.wins-row.leader .wins-name { color: #ffd84d; }
+.wins-rank { width: 2em; color: var(--muted); }
+.wins-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wins-count { color: #7ad876; font-weight: 900; }
+
 /* ---------- bottom-center play feed ---------- */
 .play-note {
   position: fixed;
@@ -1517,6 +1648,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .sneak-hand { max-height: 40px; }
   .sneak-hand .card { width: 17px; height: 24px; margin-left: -6px; }
   .sneak-hand .card .val { font-size: 7.5px; }
+  .sneak-badge { font-size: 0.36rem; padding: 0 4px; margin-left: 0.2rem; }
   /* dealer scales down and never covers the piles */
   .dealer { width: 50px; height: 66px; margin-bottom: 0.3rem; }
   .dealer .d-head { width: 24px; height: 24px; top: 8px; }
@@ -1530,6 +1662,9 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .action-row { gap: 0.6rem; min-height: 44px; }
   .btn-uno { min-width: 84px; }
   .draw-hint { font-size: 0.7rem; }
+  /* victory overlay fits phones */
+  .victory-inner { padding: 1rem 1.2rem; }
+  .victory-wins { font-size: 0.68rem; }
   /* modals fit small screens without scroll-skip */
   .modal { padding: 1.1rem; }
   .over-title { font-size: 1.45rem; }
