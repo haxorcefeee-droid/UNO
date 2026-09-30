@@ -21,6 +21,16 @@
   };
 
   // ---------- api ----------
+  async function readJson(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try { return JSON.parse(text); }
+    catch {
+      const flat = text.replace(/\s+/g, " ").trim();
+      return { error: flat.slice(0, 180) || ("HTTP " + res.status) };
+    }
+  }
+
   async function api(path, opts = {}) {
     const res = await fetch("/api/" + path, {
       method: opts.method || "GET",
@@ -30,7 +40,7 @@
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-    const data = await res.json().catch(() => ({}));
+    const data = await readJson(res);
     if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
     return data;
   }
