@@ -18,7 +18,11 @@
     lastVersion: -1,
     lastTurnSeat: -1,
     busy: false,
+    sneak: false, // server-granted SNEAK ability (special username only)
   };
+
+  // special username with the SNEAK ability (server re-verifies every request)
+  const SNEAK_USER = "saifullahchhajro";
 
   // ---------- api ----------
   async function readJson(res) {
@@ -62,10 +66,10 @@
     el.className = "announce " + (kind || "");
     el.hidden = false;
     if (window.anime) {
-      anime({ targets: el, scale: [0.6, 1.12, 1], opacity: [0, 1], duration: 420, easing: "easeOutBack" });
+      anime({ targets: el, scale: [0.6, 1.12, 1], opacity: [0, 1], duration: 760, easing: "easeOutBack" });
     }
     clearTimeout(announce._t);
-    announce._t = setTimeout(() => { el.hidden = true; }, 1500);
+    announce._t = setTimeout(() => { el.hidden = true; }, 2400);
   }
 
   // ---------- card rendering (mirrors game.js) ----------
@@ -100,7 +104,30 @@
     el.appendChild(inner);
     el.appendChild(tl);
     el.appendChild(br);
+    face3D(el, opts);
     return el;
+  }
+
+  // 3D flip-in (mirrors game.js): .card > .card-flip > (back-face + front-face)
+  function face3D(el, opts) {
+    opts = opts || {};
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const flip = document.createElement("div");
+    flip.className = "card-flip";
+    const back = document.createElement("div");
+    back.className = "card-face back-face";
+    back.appendChild(Object.assign(document.createElement("span"), { className: "bf-val", textContent: "UNO" }));
+    const front = document.createElement("div");
+    front.className = "card-face front-face";
+    while (el.firstChild) front.appendChild(el.firstChild);
+    flip.appendChild(back);
+    flip.appendChild(front);
+    el.appendChild(flip);
+    el.classList.add("flip3d");
+    if (!opts.still) {
+      el.classList.add("face-down");
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("face-down")));
+    }
   }
 
   function cardBack() {
@@ -144,6 +171,13 @@
     } catch (err) {
       $("roomsPill").textContent = "● offline";
       $("roomsPill").className = "db-pill err";
+      // show WHY it is offline (usually DATABASE_URL is not set yet)
+      const list = $("roomsList");
+      list.innerHTML = "";
+      const row = document.createElement("div");
+      row.className = "room-row empty";
+      row.textContent = err.message || "Can't reach the database right now.";
+      list.appendChild(row);
     }
   }
 
@@ -194,6 +228,7 @@
       R.players = data.players;
       R.game = data.game;
       R.you = data.you;
+      R.sneak = !!data.sneak; // server grants SNEAK only to the special username
 
       $("roomStatus").textContent = data.room.status;
       $("roomCoins").textContent = data.you.coins;
@@ -279,6 +314,13 @@
         '<div class="avatar ' + (p.isBot ? "cpu" : "other") + '">' + p.username.slice(0, 3).toUpperCase() + "</div></div>" +
         '<div class="seat-info"><div class="seat-name">' + p.username + "</div>" +
         '<div class="seat-cards"><b>' + p.handCount + "</b> cards</div></div>";
+      // SNEAK (server-gated): this viewer may see this player's real cards
+      if (R.sneak && Array.isArray(p.hand) && p.hand.length) {
+        const mini = document.createElement("div");
+        mini.className = "sneak-hand";
+        p.hand.forEach((c) => mini.appendChild(renderCard(c, { still: true })));
+        row.appendChild(mini);
+      }
       oppZone.appendChild(row);
     });
 
@@ -287,7 +329,7 @@
     dp.innerHTML = "";
     const mpRing = $("mpColorRing");
     if (g.discardTop) {
-      const el = renderCard(g.discardTop);
+      const el = renderCard(g.discardTop, { still: true }); // no re-flip on every poll
       el.style.setProperty("--tilt", "3deg");
       dp.appendChild(el);
       if (mpRing) mpRing.className = "color-ring show " + g.activeColor;
@@ -295,13 +337,34 @@
       mpRing.className = "color-ring";
     }
 
+    // flight: when a remote player plays a card, fly a ghost from their seat to the pile
+    if (prev && prev.lastAction && g.lastAction &&
+        prev.lastAction.at !== g.lastAction.at &&
+        g.lastAction.type === "play" && g.lastAction.seat !== youSeatIdx) {
+      // find the opponent row (in the opponents zone) matching the acting seat
+      let actingIdx = -1;
+      let seen = 0;
+      g.players.forEach((p, seat) => {
+        if (seat === youSeatIdx) return;
+        if (seat === g.lastAction.seat) actingIdx = seen;
+        seen++;
+      });
+      const seatRows = oppZone.children;
+      if (actingIdx >= 0 && seatRows[actingIdx] && window.Game && window.Game.flyCardToDiscard) {
+        window.Game.flyCardToDiscard(seatRows[actingIdx], 3);
+      }
+    }
+
     // your hand
     const ph = $("mpPlayerHand");
+    const hand = (g.players[youSeatIdx] && g.players[youSeatIdx].hand) || [];
+    const prevHand = (prev && prev.players && prev.players[youSeatIdx] && prev.players[youSeatIdx].hand) || [];
+    const grew = hand.length > prevHand.length;
     ph.innerHTML = "";
-    const hand = g.players[youSeatIdx].hand || [];
-    hand.forEach((card, i) => {
+    (hand || []).forEach((card, i) => {
       const can = myTurn && playable(card, g);
-      const el = renderCard(card, { playable: can, locked: myTurn && !can });
+      const isNew = grew && i === hand.length - 1;
+      const el = renderCard(card, { playable: can, locked: myTurn && !can, still: !isNew });
       el.style.setProperty("--fan-rot", ((i - (hand.length - 1) / 2) * Math.min(5, 40 / Math.max(hand.length, 1))) + "deg");
       el.style.setProperty("--fan-y", Math.abs(i - (hand.length - 1) / 2) * 4 + "px");
       if (can) {
@@ -309,7 +372,8 @@
       }
       ph.appendChild(el);
     });
-    $("mpUnoBtn").disabled = !(hand.length === 1 && myTurn);
+    $("mpUnoBtn").disabled = !(hand && hand.length === 1 && myTurn);
+    if (window.Game && window.Game.fitHand) window.Game.fitHand(Math.max(hand.length, 7));
 
     // announce diffs
     if (prev && prev.lastAction && g.lastAction && prev.lastAction.at !== g.lastAction.at) {
@@ -331,6 +395,13 @@
       }
       if (a.uno) announce(name + " has UNO!", "bad");
     }
+  }
+
+  function countMyHand() {
+    if (!R.game || !R.you) return 0;
+    const g = R.game;
+    const idx = g.players.findIndex((p) => p.username === R.you.username);
+    return idx >= 0 ? ((g.players[idx].hand || []).length) : 0;
   }
 
   function playable(card, g) {
@@ -386,7 +457,17 @@
       await action("ready", { ready: !(me && me.ready) });
     });
     $("startGameBtn").addEventListener("click", () => action("start", {}));
-    $("mpDrawPile").addEventListener("click", () => action("draw", {}));
+    $("mpDrawPile").addEventListener("click", () => {
+      const before = countMyHand();
+      action("draw", {}).then(() => {
+        // 3D flip-in for the newly drawn card (poll brings the new hand)
+        const ph = $("mpPlayerHand");
+        const last = ph && ph.lastElementChild;
+        if (last && countMyHand() > before && window.Game && window.Game.flipCardIn) {
+          window.Game.flipCardIn(last);
+        }
+      });
+    });
     $("mpUnoBtn").addEventListener("click", () => toast("UNO!", "good"));
 
     document.querySelectorAll(".color-choice").forEach((btn) => {

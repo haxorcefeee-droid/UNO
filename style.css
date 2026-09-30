@@ -16,8 +16,9 @@
   --panel: rgba(12, 40, 24, 0.55);
   --panel-border: rgba(255, 255, 255, 0.14);
   --font: "Nunito", "Segoe UI", sans-serif;
-  /* dynamic card size — JS updates --hand-vh to fit any hand width */
-  --card-w: clamp(46px, calc((100vw - 40px) / 7), 96px);
+  /* dynamic card size — JS updates --hand-vh to fit any hand width.
+     Mobile-first: bigger cards so the hand reads like a real card game. */
+  --card-w: clamp(58px, calc((100vw - 34px) / 6), 108px);
   --card-h: calc(var(--card-w) * 1.5);
   --t-fast: 0.18s;
   --t-med: 0.3s;
@@ -82,13 +83,13 @@ body {
 .fx-burst.rev { background: radial-gradient(circle at 50% 50%, rgba(58, 165, 84, 0.3), transparent 70%); }
 .fx-burst.wild { background: conic-gradient(rgba(227,59,59,0.25) 0 90deg, rgba(244,197,49,0.25) 90deg 180deg, rgba(58,165,84,0.25) 180deg 270deg, rgba(47,111,208,0.25) 270deg 360deg); }
 
-.fx-burst .fx-main { animation: fxPop 0.9s var(--ease-spring) forwards; }
+.fx-burst .fx-main { animation: fxPop 1.6s var(--ease-spring) forwards; }
 .fx-burst .fx-sub {
   position: absolute;
   margin-top: clamp(3.2rem, 12vw, 5.4rem);
   font-size: clamp(0.95rem, 3.6vw, 1.35rem);
   color: rgba(255, 255, 255, 0.92);
-  animation: fxPop 0.9s var(--ease-spring) 0.08s forwards;
+  animation: fxPop 1.6s var(--ease-spring) 0.14s forwards;
 }
 
 @keyframes fxPop {
@@ -107,7 +108,7 @@ body {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 14px rgba(255, 255, 255, 0.9);
-  animation: streakOut 0.8s ease-out forwards;
+  animation: streakOut 1.5s ease-out forwards;
 }
 
 @keyframes streakOut {
@@ -701,10 +702,10 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   transform: rotate(var(--tilt, 0deg));
 }
 
-/* ---------- announcement ---------- */
+/* ---------- announcement (centered on every screen size) ---------- */
 .announce {
-  position: absolute;
-  top: 46%;
+  position: fixed;
+  top: 42%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 40;
@@ -715,6 +716,10 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), 0 6px 24px rgba(0, 0, 0, 0.55);
   pointer-events: none;
   white-space: nowrap;
+  max-width: 96vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .announce.good { color: #aef29b; }
@@ -824,13 +829,72 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
 }
 
 .hand .card {
-  margin-left: calc(var(--card-w) * -0.34);
+  margin-left: calc(var(--card-w) * -0.3);
   transform: rotate(var(--fan-rot, 0deg)) translateY(var(--fan-y, 0px));
   transform-origin: 50% 115%;
   transition: transform var(--t-med) var(--ease-out), box-shadow var(--t-med), filter var(--t-med);
   will-change: transform;
   cursor: grab;
 }
+
+/* ---------- 3D card flip (back → face) ---------- */
+.card .card-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: perspective(700px) rotateY(0deg);
+  transition: transform 0.55s var(--ease-spring);
+}
+
+.card .card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 12px;
+}
+
+.card .card-face.back-face {
+  background:
+    radial-gradient(ellipse 46% 34% at 50% 50%, #e33b3b 0%, #e33b3b 99%, transparent 100%),
+    var(--red);
+  display: grid;
+  place-items: center;
+  transform: rotateY(180deg);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.card .card-face.back-face .bf-val {
+  color: #fff;
+  font-weight: 900;
+  font-style: italic;
+  font-size: calc(var(--card-w) * 0.24);
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+.card .card-face.front-face { transform: rotateY(0deg); }
+
+/* keep the original inner/corner geometry inside the flip layer */
+.card:not(.back) .card-face.front-face .inner { position: absolute; inset: 4px; }
+
+.card.face-down .card-flip { transform: perspective(700px) rotateY(180deg); }
+
+.card.flip3d { transform-style: preserve-3d; }
+
+.card.flip3d.still .card-flip { transition: none; }
+
+/* sneak mode: opponent cards render face-up at mini size */
+.opponent-hand.sneaking .card {
+  width: 46px;
+  height: 69px;
+  margin-left: -18px;
+  border-radius: 7px;
+}
+
+.opponent-hand.sneaking .card .val { font-size: calc(46px * 0.4); }
+.opponent-hand.sneaking .card .corner { font-size: calc(46px * 0.15); }
+.opponent-hand.sneaking .card:first-child { margin-left: 0; }
 
 .hand .card:first-child { margin-left: 0; }
 
@@ -876,7 +940,7 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   will-change: transform;
 }
 
-.card.pop { animation: cardPop 0.28s var(--ease-spring); }
+.card.pop { animation: cardPop 0.48s var(--ease-spring); }
 
 @keyframes cardPop {
   0% { transform: scale(1); }
@@ -1053,13 +1117,23 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   .color-ring.show { animation: none !important; }
   .card.ghost { display: none !important; }
   .fx-layer { display: none !important; }
+  .card .card-flip { transition: none !important; }
+  .card.face-down .card-flip { transform: none; }
 }
 
 /* ---------- small phones ---------- */
 @media (max-width: 360px) {
+  :root { --card-w: clamp(52px, calc((100vw - 28px) / 6), 70px); }
   .seat-ring { width: 50px; height: 50px; }
   .seat-ring svg { width: 50px; height: 50px; }
   .ring-seconds { font-size: 0.9rem; }
-  .opponent-hand .card.back { width: 30px; height: 45px; margin-left: -16px; }
+  .opponent-hand .card.back { width: 34px; height: 51px; margin-left: -15px; }
   .draw-hint { font-size: 0.72rem; }
 }
+
+/* ---------- slower, game-feel pacing on all devices ---------- */
+.turnGlow-slow { animation-duration: 1.8s; }
+.seat.active-turn { animation-duration: 1.8s; }
+.color-ring.show { animation-duration: 2.4s; }
+.seat-ring.radar::after { animation-duration: 3.2s; }
+.fx-burst .fx-main, .fx-burst .fx-sub { animation-duration: 1.6s; }
