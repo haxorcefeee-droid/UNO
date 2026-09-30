@@ -245,7 +245,8 @@
   async function pollOnce() {
     if (!R.room) return;
     try {
-      const data = await api("rooms/state/" + R.room.code);
+      // query form: Vercel's nested catch-all drops the second path segment
+      const data = await api("rooms/state?code=" + encodeURIComponent(R.room.code));
       const prev = R.game;
       R.players = data.players;
       R.game = data.game;
