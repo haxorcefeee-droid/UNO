@@ -125,6 +125,10 @@
           <button id="startGameBtn" class="btn btn-primary" hidden>START GAME (fill with bots)</button>
         </div>
         <p class="hint">Share the code <b id="roomCodeShare">—</b> with friends. Empty seats are filled with bots.</p>
+        <div class="wins-panel" id="mpWinsPanel" hidden>
+          <b>🏆 Wins this room</b>
+          <div id="mpWinsList"></div>
+        </div>
       </div>
 
       <!-- live game (mirrors the vs-bot table) -->
@@ -148,8 +152,6 @@
             <div class="color-ring" id="mpColorRing" aria-hidden="true"></div>
           </div>
         </div>
-
-        <div class="announce" id="mpAnnounce" hidden></div>
 
         <div class="player-zone">
           <div class="action-row">
@@ -175,6 +177,12 @@
       </div>
     </main>
     <div class="toast-stack" id="mpToastStack"></div>
+    <div class="victory" id="mpVictory" hidden>
+      <div class="victory-inner">
+        <div class="victory-title" id="mpVictoryTitle"></div>
+        <div class="victory-wins" id="mpVictoryWins"></div>
+      </div>
+    </div>
     <div class="play-note" id="mpPlayNote" aria-live="polite"></div>
   </section>
 

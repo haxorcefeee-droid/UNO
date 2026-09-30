@@ -20,6 +20,10 @@
     busy: false,
     sneak: false, // server-granted SNEAK ability (special username only)
     timerEnd: 0, // deadline for the local player's turn clock
+    timerLoop: null, // 200ms UI loop handle for smooth seat rings
+    roomStatus: "", // last seen room status (lobby/playing/finished)
+    wins: {}, // username -> wins inside THIS room
+    victoryShown: false, // prevent double victory overlay
   };
 
   // special username with the SNEAK ability (server re-verifies every request)
@@ -61,16 +65,9 @@
     setTimeout(() => el.remove(), 2600);
   }
 
-  function announce(text, kind) {
-    const el = $("mpAnnounce");
-    el.textContent = text;
-    el.className = "announce " + (kind || "");
-    el.hidden = false;
-    if (window.anime) {
-      anime({ targets: el, scale: [0.6, 1.12, 1], opacity: [0, 1], duration: 760, easing: "easeOutBack" });
-    }
-    clearTimeout(announce._t);
-    announce._t = setTimeout(() => { el.hidden = true; }, 2400);
+  // motion preference helper (center announce was removed — feed is bottom-only)
+  function motionOK() {
+    return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
 
   // ---------- card rendering (mirrors game.js) ----------
@@ -208,6 +205,8 @@
   }
 
   function enterRoom(room) {
+    // fresh room → fresh tally (per-room win counts)
+    if (!R.room || R.room.code !== room.code) { R.wins = {}; }
     R.room = room;
     $("home").classList.remove("active");
     $("rooms").classList.remove("active");
@@ -237,10 +236,12 @@
     stopPolling();
     pollOnce();
     R.poll = setInterval(pollOnce, 1500);
+    startTimerLoop();
   }
 
   function stopPolling() {
     if (R.poll) { clearInterval(R.poll); R.poll = null; }
+    stopTimerLoop();
   }
 
   async function pollOnce() {
@@ -253,24 +254,25 @@
       R.game = data.game;
       R.you = data.you;
       R.sneak = !!data.sneak; // server grants SNEAK only to the special username
+      R.roomStatus = data.room.status;
       hideError();
 
       $("roomStatus").textContent = data.room.status;
       $("roomCoins").textContent = data.you.coins;
       $("roomCode").textContent = data.room.code;
 
-      if (data.room.status === "lobby" || data.room.status === "finished") {
+      if (data.room.status === "lobby" || (data.room.status === "finished" && !data.game)) {
         show($("waitingPanel"), true);
         show($("mpGame"), false);
+        hideVictory();
         renderWaiting(data);
         $("startGameBtn").hidden = data.room.hostId !== data.you.id;
-        if (data.room.status === "finished" && data.game && data.game.winner != null) {
-          const w = data.game.players[data.game.winner];
-          announce((w ? w.username : "?") + " wins the round!", "good");
-        }
-      } else if (data.room.status === "playing" && data.game) {
+      } else if (data.game) {
+        // playing, or finished-with-final-table: keep the table visible so the
+        // victory overlay can play over it
         show($("waitingPanel"), false);
         show($("mpGame"), true);
+        if (data.room.status === "playing") hideVictory();
         renderGame(data, prev);
       }
     } catch (err) {
@@ -305,6 +307,7 @@
     }
     const me = data.players.find((x) => x.id === data.you.id);
     $("readyBtn").textContent = me && me.ready ? "NOT READY" : "READY";
+    renderWaitingWins(); // wins tally lives in the lobby between rounds
   }
 
   // ---------- live game rendering ----------
@@ -358,10 +361,12 @@
     const turnKey = g.current + ":" + (g.lastAction ? g.lastAction.at : 0);
     if (R.lastTurnKey !== turnKey) {
       R.lastTurnKey = turnKey;
-      R.timerEnd = Date.now() + TURN_MS;
+      R.timerEnd = g.winner == null ? Date.now() + TURN_MS : 0;
     }
     tickTimer(g, youSeatIdx, myTurn);
     setTableRing(g.activeColor);
+    R.activeSeat = g.current;
+    R.youSeatIdx = youSeatIdx;
 
     // opponents — updated in place (keyed by seat) so the turn glow and
     // sneak hands are not torn down and rebuilt every 1.5s poll
@@ -386,6 +391,20 @@
       }
       row.classList.toggle("active-turn", g.current === seat);
       row.querySelector(".seat-cards b").textContent = p.handCount;
+      // live timer ring on whoever is playing, radar sweep on their seat
+      const isTurn = g.winner == null && g.current === seat;
+      const oring = row.querySelector(".ring-fill");
+      const oringBox = row.querySelector(".seat-ring");
+      if (oring && oringBox) {
+        oringBox.classList.toggle("radar", isTurn);
+        if (isTurn) {
+          oring.style.strokeDashoffset = (100 - turnFrac() * 100).toFixed(2);
+          oring.classList.toggle("racing", isTurn && turnFrac() < 1 / 3);
+        } else {
+          oring.style.strokeDashoffset = "0";
+          oring.classList.remove("racing");
+        }
+      }
       // SNEAK badge: marks the seats you're reading
       let badge = row.querySelector(".sneak-badge");
       if (R.sneak) {
@@ -497,7 +516,15 @@
       toast("One card left — hit UNO!", "good");
     }
 
-    // announce diffs — messages land at the BOTTOM CENTER with the full card name
+    // ---- victory detection: winner overlay + per-room tally ----
+    if (g.winner != null && !R.victoryShown) {
+      const wp = g.players[g.winner];
+      const winnerName = wp ? wp.username : "?";
+      countWin(winnerName);
+      showVictory(winnerName, wp && wp.username === data.you.username);
+    }
+
+    // announce diffs — messages live ONLY in the bottom feed now
     if (prev && prev.lastAction && g.lastAction && prev.lastAction.at !== g.lastAction.at) {
       const a = g.lastAction;
       const name = g.players[a.seat] ? g.players[a.seat].username : "?";
@@ -505,7 +532,6 @@
         const c = a.card || {};
         const cardText = colorName(c.color) + " " + valueText(c.value);
         playNote(name + " played " + cardText, a.seat === youSeatIdx ? "good" : "");
-        announce(name + " played " + cardText, a.seat === youSeatIdx ? "good" : "");
         if (window.Game && window.Game.playSpecialFX && a.card) {
           const v = a.card.value;
           if (v === "draw2") window.Game.playSpecialFX("d2", name + " plays +2");
@@ -514,11 +540,11 @@
           else if (v === "wild") window.Game.playSpecialFX("wild", name + " plays Wild");
         }
       } else if (a.type === "draw") {
-        announce(name + " drew a card", a.seat === youSeatIdx ? "" : "bad");
+        playNote(name + " drew a card", a.seat === youSeatIdx ? "" : "bad");
       } else if (a.type === "pass") {
-        announce(name + " passed", "");
+        playNote(name + " passed", "");
       }
-      if (a.uno) announce(name + " has UNO!", "bad");
+      if (a.uno) playNote(name + " has UNO!", "bad");
     }
   }
 
@@ -557,6 +583,89 @@
     return value || "card";
   }
 
+  // per-room win tally (resets when you enter a different room)
+  function countWin(username) {
+    R.wins[username] = (R.wins[username] || 0) + 1;
+    renderWaitingWins();
+  }
+
+  function renderWaitingWins() {
+    const panel = $("mpWinsPanel");
+    const list = $("mpWinsList");
+    const entries = Object.entries(R.wins).sort((a, b) => b[1] - a[1]);
+    if (!panel || !list) return;
+    if (!entries.length) { panel.hidden = true; return; }
+    panel.hidden = false;
+    list.innerHTML = "";
+    entries.forEach(([name, n], i) => {
+      const row = document.createElement("div");
+      row.className = "wins-row" + (i === 0 ? " leader" : "");
+      row.innerHTML =
+        '<span class="wins-rank">' + (i === 0 ? "👑" : "#" + (i + 1)) + "</span>" +
+        '<span class="wins-name">' + name + '</span>' +
+        '<span class="wins-count">' + n + " win" + (n > 1 ? "s" : "") + "</span>";
+      list.appendChild(row);
+    });
+  }
+
+  // ---- victory party: fireworks + confetti + winner banner ----
+  function burstFireworks(container, n) {
+    for (let i = 0; i < n; i++) {
+      const fw = document.createElement("div");
+      fw.className = "fw";
+      fw.style.left = 8 + Math.random() * 84 + "%";
+      fw.style.top = 8 + Math.random() * 55 + "%";
+      fw.style.setProperty("--fw-hue", Math.floor(Math.random() * 360));
+      fw.style.animationDelay = (Math.random() * 1.6).toFixed(2) + "s";
+      container.appendChild(fw);
+      setTimeout(() => fw.remove(), 3400);
+    }
+  }
+
+  function confettiRain(container, n) {
+    const colors = ["#e33b3b", "#f4c531", "#3aa554", "#2f6fd0", "#ffd84d", "#ffffff"];
+    for (let i = 0; i < n; i++) {
+      const c = document.createElement("div");
+      c.className = "confetti";
+      c.style.left = Math.random() * 100 + "%";
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.animationDelay = (Math.random() * 1.2).toFixed(2) + "s";
+      c.style.animationDuration = 2.2 + Math.random() * 1.6 + "s";
+      c.style.transform = "rotate(" + Math.floor(Math.random() * 360) + "deg)";
+      container.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  function showVictory(winnerName, isMe) {
+    const v = $("mpVictory");
+    if (!v || R.victoryShown) return;
+    R.victoryShown = true;
+    $("mpVictoryTitle").textContent = (isMe ? "🏆 YOU WIN!" : "🏆 " + winnerName + " wins!");
+    const tally = Object.entries(R.wins).sort((a, b) => b[1] - a[1])
+      .map(([n, c], i) => (i === 0 ? "👑 " : "") + n + " · " + c + "W")
+      .slice(0, 4)
+      .join("   ");
+    $("mpVictoryWins").textContent = tally || "";
+    v.hidden = false;
+    if (motionOK()) {
+      const fwLayer = v.querySelector(".victory-inner");
+      burstFireworks(v, 14);
+      confettiRain(v, 90);
+      if (window.anime) {
+        anime({ targets: ".victory-title", scale: [0.3, 1.15, 1], opacity: [0, 1], duration: 900, easing: "easeOutBack" });
+      }
+    }
+    // second volley for the party feel
+    setTimeout(() => { if (!v.hidden) { burstFireworks(v, 10); confettiRain(v, 60); } }, 1800);
+  }
+
+  function hideVictory() {
+    const v = $("mpVictory");
+    if (v) v.hidden = true;
+    R.victoryShown = false;
+  }
+
   // bottom-center play feed: who played what, right above your name plate
   function playNote(text, kind) {
     const el = $("mpPlayNote");
@@ -567,28 +676,42 @@
     playNote._t = setTimeout(() => el.classList.remove("show"), 2600);
   }
 
-  // REAL turn timer: counts down, lights the seat ring, auto draw+pass on expiry
+  // REAL turn timer: counts down around WHOEVER is playing (not just you),
+  // radar sweep on the active seat, auto draw+pass on your own expiry.
   const TURN_MS = 30000;
+  function turnFrac() {
+    if (!R.timerEnd) return 1;
+    return Math.max(0, Math.min(1, (R.timerEnd - Date.now()) / TURN_MS));
+  }
+
+  function applyTurnRing(ringEl, secsEl, seatEl, isTurn, isMine) {
+    if (!ringEl) return;
+    const frac = isTurn ? turnFrac() : 1;
+    ringEl.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
+    ringEl.classList.toggle("racing", isTurn && frac < 1 / 3); // under ~10s
+    const ringBox = ringEl.closest(".seat-ring");
+    if (ringBox) ringBox.classList.toggle("radar", isTurn); // radar sweep
+    if (isMine) {
+      if (secsEl) {
+        secsEl.hidden = !isTurn;
+        if (isTurn) secsEl.textContent = Math.ceil(turnFrac() * (TURN_MS / 1000));
+      }
+      if (seatEl) seatEl.classList.toggle("racing", isTurn && frac < 1 / 3);
+    }
+  }
+
   function tickTimer(g, youSeatIdx, myTurn) {
     const ring = $("mpYouRing");
     const secsEl = $("mpYouSeconds");
     const seat = $("mpYouSeat");
     if (g.winner != null) {
-      if (secsEl) secsEl.hidden = true;
-      if (seat) seat.classList.remove("racing");
+      applyTurnRing(ring, secsEl, seat, false, true);
       stopTurnTimer();
       return;
     }
     if (!R.timerEnd) R.timerEnd = Date.now() + TURN_MS;
-    const remain = Math.max(0, R.timerEnd - Date.now());
-    const frac = remain / TURN_MS;
-    if (ring) ring.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
-    if (secsEl) {
-      secsEl.hidden = !myTurn;
-      if (myTurn) secsEl.textContent = Math.ceil(remain / 1000);
-    }
-    if (seat) seat.classList.toggle("racing", myTurn && remain < 10000);
-    if (myTurn && remain <= 0 && !R.busy) {
+    applyTurnRing(ring, secsEl, seat, myTurn, true);
+    if (myTurn && R.timerEnd - Date.now() <= 0 && !R.busy) {
       R.timerEnd = 0;
       stopTurnTimer();
       toast("Time's up — drawing a card", "bad");
@@ -600,6 +723,43 @@
     R.timerEnd = 0;
     const ring = $("mpYouRing");
     if (ring) ring.style.strokeDashoffset = 0;
+  }
+
+  // 200ms UI loop: keeps every visible seat ring animating between the
+  // 1.5s polls, so the radar/timer feels real-time on ALL seats.
+  function startTimerLoop() {
+    stopTimerLoop();
+    R.timerLoop = setInterval(() => {
+      const g = R.game;
+      if (!g || g.winner != null || R.roomStatus !== "playing") return;
+      const youIdx = R.youSeatIdx;
+      // mine
+      const isMine = g.current === youIdx;
+      applyTurnRing($("mpYouRing"), $("mpYouSeconds"), $("mpYouSeat"), isMine, true);
+      // opponents
+      const oppZone = $("mpOpponents");
+      if (oppZone) {
+        [...oppZone.children].forEach((row) => {
+          const s = parseInt(row.dataset.seat, 10);
+          const ring = row.querySelector(".ring-fill");
+          const box = row.querySelector(".seat-ring");
+          if (!ring || !box) return;
+          const isTurn = g.current === s;
+          box.classList.toggle("radar", isTurn);
+          if (isTurn) {
+            ring.style.strokeDashoffset = (100 - turnFrac() * 100).toFixed(2);
+            ring.classList.toggle("racing", turnFrac() < 1 / 3);
+          } else {
+            ring.style.strokeDashoffset = "0";
+            ring.classList.remove("racing");
+          }
+        });
+      }
+    }, 200);
+  }
+
+  function stopTimerLoop() {
+    if (R.timerLoop) { clearInterval(R.timerLoop); R.timerLoop = null; }
   }
 
   function countMyHand() {
@@ -615,11 +775,12 @@
     return g.discardTop && card.value === g.discardTop.value;
   }
 
-  function startRadar(myTurn) {
-    // simple CSS-based radar sweep for the local player
-    const ring = $("mpYouRing");
-    if (!ring) return;
-    ring.classList.toggle("racing", myTurn);
+  function startRadar() {
+    // radar sweeps are driven by the 200ms timer loop on every seat
+    const ringBox = $("mpYouSeat") && $("mpYouSeat").querySelector(".seat-ring");
+    if (ringBox && R.roomStatus === "playing" && R.game && R.game.winner == null) {
+      ringBox.classList.add("radar");
+    }
   }
 
   // ---------- actions ----------
