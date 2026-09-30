@@ -1,20 +1,36 @@
 /* ============================================================
-   UNO — realistic card-table theme (v4: drag & drop, mobile-native)
+   UNO — premium mobile-first theme (v5: navy design system)
+   Engine untouched: this file is the presentation layer.
    ============================================================ */
 :root {
-  --felt: #1c7a4c;
-  --felt-dark: #0e4a2c;
-  --wood: #5d3a1a;
-  --wood-dark: #3a2210;
-  --ink: #2b2320;
-  --red: #e33b3b;
-  --yellow: #f4c531;
-  --green: #3aa554;
-  --blue: #2f6fd0;
-  --text: #f7f3ea;
-  --muted: #b8c7b6;
-  --panel: rgba(12, 40, 24, 0.55);
-  --panel-border: rgba(255, 255, 255, 0.14);
+  /* design-system palette (deep navy + bright accents) */
+  --bg-primary: #071A2D;
+  --bg-secondary: #0D2942;
+  --accent-blue: #168CFF;
+  --accent-green: #35D85B;
+  --accent-yellow: #FFC928;
+  --accent-red: #FF3B30;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A9BFD5;
+  --radius-small: 10px;
+  --radius-medium: 16px;
+  --radius-large: 24px;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+  /* legacy variable names kept — whole file re-themes through these */
+  --felt: #123A5C;
+  --felt-dark: #0A2540;
+  --wood: #14304A;
+  --wood-dark: #0B1E30;
+  --ink: #10263C;
+  --red: var(--accent-red);
+  --yellow: var(--accent-yellow);
+  --green: var(--accent-green);
+  --blue: var(--accent-blue);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --panel: rgba(13, 41, 66, 0.62);
+  --panel-border: rgba(169, 191, 213, 0.16);
   --font: "Nunito", "Segoe UI", sans-serif;
   /* dynamic card size — JS updates --hand-vh to fit any hand width.
      Mobile-first: bigger cards so the hand reads like a real card game. */
@@ -36,7 +52,9 @@ html, body { height: 100%; overscroll-behavior: none; }
 
 body {
   font-family: var(--font);
-  background: radial-gradient(1100px 700px at 50% -20%, #35594a, transparent 60%), #17251f;
+  background:
+    radial-gradient(1100px 700px at 50% -20%, #12365a, transparent 60%),
+    var(--bg-primary);
   color: var(--text);
   overflow: hidden;
   position: fixed;
@@ -50,8 +68,8 @@ body {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(900px 480px at 50% 18%, rgba(255, 214, 140, 0.14), transparent 65%),
-    radial-gradient(1400px 900px at 50% 120%, rgba(0, 0, 0, 0.55), transparent 60%);
+    radial-gradient(900px 480px at 50% 18%, rgba(22, 140, 255, 0.16), transparent 65%),
+    radial-gradient(1400px 900px at 50% 120%, rgba(0, 0, 0, 0.5), transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -147,7 +165,7 @@ body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-primary {
-  background: linear-gradient(180deg, #e8443f, #c22e2c);
+  background: linear-gradient(180deg, var(--accent-green), #1f9e3e);
   color: #fff;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
@@ -161,6 +179,64 @@ body {
   font-size: 0.8rem;
   padding: 0.5rem 1.1rem;
 }
+
+/* premium CTA system */
+.btn-hero {
+  width: 100%;
+  min-height: 58px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #08251a;
+  background: linear-gradient(180deg, #ffd84d, #f0a929);
+  box-shadow: 0 12px 30px rgba(240, 169, 41, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.6);
+}
+
+.btn-hero:active { transform: scale(0.98); }
+
+.btn-secondary {
+  background: linear-gradient(180deg, var(--accent-blue), #0d5cb8);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(22, 140, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cta-row { display: flex; gap: 0.6rem; }
+
+.cta-half { flex: 1; min-height: 48px; font-size: 0.82rem; }
+
+.btn-quiet { opacity: 0.75; }
+
+/* fanned mini cards behind the logo */
+.brand-cards {
+  position: relative;
+  display: inline-grid;
+  width: 84px;
+  height: 56px;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.brand-cards .bc {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 44px;
+  border-radius: 6px;
+  border: 2px solid #fff;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+.brand-cards .bc.red { background: var(--accent-red); transform: translate(-50%, -50%) rotate(-18deg) translateX(-16px); }
+.brand-cards .bc.blue { background: var(--accent-blue); transform: translate(-50%, -50%) rotate(-6deg); }
+.brand-cards .bc.yellow { background: var(--accent-yellow); color: #5a3a00; transform: translate(-50%, -50%) rotate(6deg); }
+.brand-cards .bc.green { background: var(--accent-green); transform: translate(-50%, -50%) rotate(18deg) translateX(16px); }
 
 .btn-uno {
   background: linear-gradient(180deg, #ffd84d, #f0a929);
@@ -756,6 +832,62 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 }
 
 @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* ---------- YOUR TURN banner ---------- */
+.turn-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  font-weight: 900;
+  font-size: clamp(0.95rem, 4vw, 1.3rem);
+  letter-spacing: 0.18em;
+  color: #06240f;
+  background: linear-gradient(180deg, var(--accent-green), #1f9e3e);
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  padding: 0.4rem 1.4rem;
+  box-shadow: 0 0 0 3px rgba(53, 216, 91, 0.25), 0 10px 26px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* ---------- special card identity (visual only) ---------- */
+.card.special .val {
+  font-size: calc(var(--card-w) * 0.5);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.card.special.wild .val,
+.card.special .inner {
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+}
+
+.card.special::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+
+/* ---------- lobby chips + wide buttons ---------- */
+.lobby-head { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+
+.lobby-chip {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+
+.lobby-chip b { color: var(--text-primary); }
+
+.btn-wide { width: 100%; }
 
 /* ---------- center zone ---------- */
 .center-zone {
@@ -1498,6 +1630,24 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   font-weight: 800;
   color: var(--text);
   letter-spacing: 0.06em;
+}
+
+.victory-coins {
+  color: #ffd84d;
+  font-weight: 900;
+}
+
+.victory.lose .victory-title {
+  color: #ff8a8a;
+  text-shadow: 0 3px 0 #7a2020, 0 10px 34px rgba(0, 0, 0, 0.6);
+}
+
+.victory-sub {
+  font-size: clamp(0.8rem, 3.4vw, 1rem);
+  font-weight: 800;
+  color: var(--text-secondary);
+  margin-top: 0.3rem;
+  letter-spacing: 0.04em;
 }
 
 /* fireworks: rising spark that pops into a hue-varied ring */

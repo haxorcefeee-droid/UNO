@@ -409,6 +409,16 @@ function syncDiscard() {
 
 function renderAll(opts) {
   opts = opts || {};
+  const banner = document.getElementById("turnBanner");
+  const myTurnNow = state.current === "you" && !state.over;
+  if (banner) {
+    const wasShown = !banner.hidden;
+    banner.textContent = myTurnNow ? "YOUR TURN" : "";
+    banner.hidden = !myTurnNow;
+    if (myTurnNow && !wasShown && hasAnime && !reducedMotion()) {
+      anime({ targets: banner, translateY: [-26, 0], opacity: [0, 1], scale: [0.85, 1], duration: 320, easing: "easeOutBack" });
+    }
+  }
   dom.cpuCount.textContent = state.cpu.length;
   dom.youCount.textContent = state.you.length;
   dom.cpuTotal.textContent = state.totalScores.cpu + " pts";
@@ -1576,6 +1586,20 @@ window.Game = {
   flyFromEl,
   sound: Sound,
 };
+
+// JOIN ROOM CTA scrolls to the join box and focuses the code input
+(function () {
+  const nav = document.getElementById("joinRoomNavBtn");
+  if (nav) {
+    nav.addEventListener("click", () => {
+      if (window.Rooms) window.Rooms.openRooms();
+      setTimeout(() => {
+        const input = document.getElementById("joinCode");
+        if (input) input.focus();
+      }, 120);
+    });
+  }
+})();
 
 // ---------- boot ----------
 (async function boot() {

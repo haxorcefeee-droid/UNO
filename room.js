@@ -75,12 +75,13 @@
   }
 
   // ---------- card rendering (mirrors game.js) ----------
+  // special cards get premium glyph identity (rules untouched)
   function cardLabel(card) {
-    if (card.value === "skip") return "⊘";
-    if (card.value === "reverse") return "⇄";
+    if (card.value === "skip") return "🚫";
+    if (card.value === "reverse") return "🔄";
     if (card.value === "draw2") return "+2";
-    if (card.value === "wild") return "WILD";
-    if (card.value === "wild4") return "W+4";
+    if (card.value === "wild") return "🎨";
+    if (card.value === "wild4") return "+4";
     return card.value;
   }
 
@@ -90,6 +91,8 @@
     el.className = "card " + card.color;
     if (opts.playable) el.classList.add("playable");
     else if (opts.locked) el.classList.add("locked");
+    const special = ["skip", "reverse", "draw2", "wild", "wild4"].includes(card.value);
+    if (special) el.classList.add("special");
     const inner = document.createElement("div");
     inner.className = "inner";
     const label = card.color === "wild" ? "★" : cardLabel(card);
@@ -98,10 +101,10 @@
     val.textContent = label;
     const tl = document.createElement("span");
     tl.className = "corner tl";
-    tl.textContent = label;
+    tl.textContent = card.color === "wild" ? "★" : cardLabel(card);
     const br = document.createElement("span");
     br.className = "corner br";
-    br.textContent = label;
+    br.textContent = card.color === "wild" ? "★" : cardLabel(card);
     inner.appendChild(val);
     el.appendChild(inner);
     el.appendChild(tl);
@@ -300,14 +303,17 @@
   function renderWaiting(data) {
     const grid = $("seatGrid");
     grid.innerHTML = "";
+    const maxEl = $("lobbyMax");
+    if (maxEl) maxEl.textContent = data.room.maxPlayers;
     for (let i = 0; i < data.room.maxPlayers; i++) {
       const p = data.players.find((x) => x.seat === i);
+      const isHost = p && p.id === data.room.hostId;
       const cell = document.createElement("div");
       cell.className = "seat-cell" + (p ? " taken" : "");
       cell.innerHTML = p
         ? '<div class="avatar ' + (p.id === data.you.id ? "you" : "cpu") + '">' +
           (p.id === data.you.id ? "YOU" : p.username.slice(0, 3).toUpperCase()) + "</div>" +
-          '<div class="seat-cell-name">' + p.username + "</div>" +
+          '<div class="seat-cell-name">' + (isHost ? "👑 " : "") + p.username + "</div>" +
           '<div class="seat-cell-coins">🪙' + p.coins + "</div>" +
           (p.ready ? '<div class="ready-dot">✓</div>' : "")
         : '<div class="avatar empty">—</div><div class="seat-cell-name muted">open seat</div>' +
@@ -375,6 +381,16 @@
       R.graceUntil = Date.now() + PLAY_GRACE_MS; // clock holds during the feed
     }
     tickTimer(g, youSeatIdx, myTurn);
+    // YOUR TURN banner (multiplayer) — anime.js drop-in, bottom feed carries messages
+    const tb = $("mpTurnBanner");
+    if (tb) {
+      const showBanner = myTurn && g.winner == null;
+      const wasShown = !tb.hidden;
+      tb.hidden = !showBanner;
+      if (showBanner && !wasShown && window.anime && motionOK()) {
+        window.anime({ targets: tb, translateY: [-26, 0], opacity: [0, 1], scale: [0.85, 1], duration: 320, easing: "easeOutBack" });
+      }
+    }
     setTableRing(g.activeColor);
     R.activeSeat = g.current;
     R.youSeatIdx = youSeatIdx;
@@ -711,23 +727,46 @@
     const v = $("mpVictory");
     if (!v || R.victoryShown) return;
     R.victoryShown = true;
-    $("mpVictoryTitle").textContent = (isMe ? "🏆 YOU WIN!" : "🏆 " + winnerName + " wins!");
+    v.classList.toggle("lose", !isMe);
+    const title = $("mpVictoryTitle");
+    title.textContent = isMe ? "🏆 YOU WIN!" : "😖 YOU LOSE";
+    if (!isMe) {
+      const sub = document.createElement("div");
+      sub.className = "victory-sub";
+      sub.textContent = winnerName + " takes this one — rematch?";
+      title.appendChild(sub);
+    }
     const tally = Object.entries(R.wins).sort((a, b) => b[1] - a[1])
       .map(([n, c], i) => (i === 0 ? "👑 " : "") + n + " · " + c + "W")
       .slice(0, 4)
       .join("   ");
-    $("mpVictoryWins").textContent = tally || "";
+    $("mpVictoryWins").innerHTML =
+      '<span class="victory-coins">+0</span> 🪙 &nbsp;·&nbsp; ' + (tally || "");
     v.hidden = false;
     if (motionOK()) {
-      const fwLayer = v.querySelector(".victory-inner");
-      burstFireworks(v, 14);
-      confettiRain(v, 90);
+      burstFireworks(v, isMe ? 14 : 4);
+      if (isMe) confettiRain(v, 90);
       if (window.anime) {
         anime({ targets: ".victory-title", scale: [0.3, 1.15, 1], opacity: [0, 1], duration: 900, easing: "easeOutBack" });
+        // coin reward counter ticks up (visual reward only — coins are server-side)
+        const coins = isMe ? 50 : 0;
+        const coinObj = { n: 0 };
+        anime({
+          targets: coinObj,
+          n: coins,
+          round: 1,
+          duration: 1200,
+          delay: 400,
+          easing: "easeOutQuad",
+          update: () => {
+            const el = document.querySelector(".victory-coins");
+            if (el) el.textContent = "+" + coinObj.n;
+          },
+        });
       }
     }
     // second volley for the party feel
-    setTimeout(() => { if (!v.hidden) { burstFireworks(v, 10); confettiRain(v, 60); } }, 1800);
+    if (isMe) setTimeout(() => { if (!v.hidden) { burstFireworks(v, 10); confettiRain(v, 60); } }, 1800);
   }
 
   function hideVictory() {
@@ -898,6 +937,18 @@
 
   function wireOnce() {
     $("createRoomBtn").addEventListener("click", createRoom);
+    const inviteBtn = $("inviteBtn");
+    if (inviteBtn) {
+      inviteBtn.addEventListener("click", async () => {
+        const code = R.room ? R.room.code : $("roomCodeShare").textContent;
+        const link = location.origin + location.pathname + "?join=" + code;
+        try {
+          if (navigator.share) await navigator.share({ title: "UNO room", text: "Join my UNO room " + code, url: link });
+          else if (navigator.clipboard) { await navigator.clipboard.writeText(link); toast("Invite link copied!", "good"); }
+          else toast("Room code: " + code, "good");
+        } catch (e) { /* user dismissed share sheet */ }
+      });
+    }
     $("joinRoomBtn").addEventListener("click", () => joinRoom($("joinCode").value.trim().toUpperCase()));
     $("roomsBackBtn").addEventListener("click", leaveRoomScreen);
     $("leaveRoomBtn").addEventListener("click", leaveRoom);
@@ -990,7 +1041,27 @@
     refreshRooms,
     leaveRoomScreen,
     toast,
+    openRooms: () => {
+      $("home").classList.remove("active");
+      $("rooms").classList.add("active");
+      refreshRooms();
+    },
   };
+
+  // deep link: ?join=CODE auto-joins after sign-in
+  const params = new URLSearchParams(location.search);
+  const joinCode = params.get("join");
+  if (joinCode) {
+    const tryJoin = setInterval(async () => {
+      if (!R.token || !R.user) { try { await loadMe(); } catch (e) {} if (!R.user) return; }
+      clearInterval(tryJoin);
+      try {
+        const data = await api("rooms/join", { method: "POST", body: { code: joinCode.toUpperCase() } });
+        enterRoom(data.room);
+      } catch (e) { toast(e.message, "bad"); }
+    }, 700);
+    setTimeout(() => clearInterval(tryJoin), 20000);
+  }
 
   document.addEventListener("DOMContentLoaded", wireOnce);
   if (document.readyState !== "loading") wireOnce();

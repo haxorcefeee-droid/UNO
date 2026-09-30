@@ -25,8 +25,8 @@
         <div class="tp-card wild"><span class="corner tl">★</span><span class="oval"></span><span class="val">★</span><span class="corner br">★</span></div>
         <div class="tp-card blue"><span class="corner tl">7</span><span class="oval"></span><span class="val">7</span><span class="corner br">7</span></div>
       </div>
-      <h1 class="brand">UNO</h1>
-      <p class="tagline">The classic card game — played at a real table</p>
+      <h1 class="brand"><span class="brand-cards" aria-hidden="true"><i class="bc red">7</i><i class="bc blue">3</i><i class="bc yellow">2</i><i class="bc green">8</i></span>UNO</h1>
+      <p class="tagline">The classic card game — premium table, real opponents</p>
       <button id="rulesBtn" class="btn btn-ghost" type="button">HOW TO PLAY</button>
 
       <div class="home-card">
@@ -49,9 +49,12 @@
             <span>W <b id="userWins">0</b></span>
             <span>L <b id="userLosses">0</b></span>
           </div>
-          <button id="playCpuBtn" class="btn btn-primary">PLAY vs BOT</button>
-          <button id="openRoomsBtn" class="btn btn-ghost">MULTIPLAYER ROOMS</button>
-          <button id="logoutBtn" class="btn btn-ghost">SIGN OUT</button>
+          <button id="playCpuBtn" class="btn btn-hero">⚡ QUICK MATCH</button>
+          <div class="cta-row">
+            <button id="openRoomsBtn" class="btn btn-secondary cta-half">🏠 CREATE ROOM</button>
+            <button id="joinRoomNavBtn" class="btn btn-secondary cta-half">👥 JOIN ROOM</button>
+          </div>
+          <button id="logoutBtn" class="btn btn-ghost btn-quiet">SIGN OUT</button>
         </div>
       </div>
 
@@ -118,12 +121,16 @@
 
       <!-- waiting room overlay -->
       <div class="waiting" id="waitingPanel">
-        <h3>Waiting room</h3>
+        <div class="lobby-head">
+          <span class="lobby-chip">🎮 <b>Classic UNO</b></span>
+          <span class="lobby-chip">👥 <b id="lobbyMax">4</b> players</span>
+        </div>
         <div class="seat-grid" id="seatGrid"></div>
         <div class="over-actions">
-          <button id="readyBtn" class="btn btn-ghost">READY</button>
-          <button id="startGameBtn" class="btn btn-primary" hidden>START GAME (fill with bots)</button>
+          <button id="readyBtn" class="btn btn-secondary">READY</button>
+          <button id="startGameBtn" class="btn btn-hero" hidden>▶ START GAME</button>
         </div>
+        <button id="inviteBtn" class="btn btn-secondary btn-wide" type="button">🔗 INVITE FRIENDS</button>
         <p class="hint">Share the code <b id="roomCodeShare">—</b> with friends. Empty seats are filled with bots.</p>
         <div class="wins-panel" id="mpWinsPanel" hidden>
           <b>🏆 Wins this room</b>
@@ -133,6 +140,7 @@
 
       <!-- live game (mirrors the vs-bot table) -->
       <div id="mpGame" hidden>
+        <div class="turn-banner" id="mpTurnBanner" hidden>YOUR TURN</div>
         <!-- chat: collapsible panel, bottom-right -->
         <div class="chat" id="mpChat">
           <button class="chat-fab" id="chatFab" type="button" aria-label="Open chat">💬 <span class="chat-unread" id="chatUnread" hidden>0</span></button>
@@ -209,9 +217,8 @@
         <div class="round-chip">Round <b id="roundNum">1</b> · Match <b id="matchScore">0 : 0</b></div>
       </div>
       <div class="coin-chip small">🪙 <b id="gameCoins">0</b></div>
-    </header>
-
-    <main class="table">
+    </header>      <main class="table">
+        <div class="turn-banner" id="turnBanner" hidden>YOUR TURN</div>
       <!-- Opponent -->
       <div class="opponent-zone">
         <div class="seat" id="cpuSeat">
