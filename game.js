@@ -1034,12 +1034,12 @@ async function endRound(winner) {
     coinEl.hidden = true;
   }
 
-  saveScore().then((ok) => {
+  saveScore().then((result) => {
     dom.saveNote.hidden = false;
-    dom.saveNote.textContent = ok
+    dom.saveNote.textContent = result.ok
       ? "✓ Result saved to Neon database"
-      : "⚠ Database offline — score not saved";
-    dom.saveNote.className = "save-note " + (ok ? "ok" : "err");
+      : "⚠ " + (result.error || "Database offline — score not saved");
+    dom.saveNote.className = "save-note " + (result.ok ? "ok" : "err");
   });
 }
 
@@ -1054,11 +1054,12 @@ async function saveScore() {
         rounds: state.round,
       }),
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return true;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+    return { ok: true };
   } catch (err) {
     console.error("Save failed:", err);
-    return false;
+    return { ok: false, error: err.message };
   }
 }
 
@@ -1175,26 +1176,33 @@ if (openRoomsBtn) {
   });
 }
 
-dom.quitBtn.addEventListener("click", showHome);
-dom.rulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.add("show"));
-dom.closeRulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.remove("show"));
-dom.rulesOverlay.addEventListener("click", (e) => {
-  if (e.target === dom.rulesOverlay) dom.rulesOverlay.classList.remove("show");
-});
+if (dom.quitBtn) dom.quitBtn.addEventListener("click", showHome);
+if (dom.rulesBtn && dom.rulesOverlay) {
+  dom.rulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.add("show"));
+}
+if (dom.closeRulesBtn && dom.rulesOverlay) {
+  dom.closeRulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.remove("show"));
+  dom.rulesOverlay.addEventListener("click", (e) => {
+    if (e.target === dom.rulesOverlay) dom.rulesOverlay.classList.remove("show");
+  });
+}
 
 // ---------- leaderboard ----------
 async function loadLeaderboard() {
   setPill("connecting", "");
   try {
     const res = await fetch("/api/scores?limit=8");
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
     renderLeaderboard(data.scores || []);
     setPill("neon live", "ok");
   } catch (err) {
     console.error(err);
-    dom.homeLeaderboard.innerHTML =
-      '<li class="empty">Leaderboard unavailable — database offline</li>';
+    dom.homeLeaderboard.innerHTML = "";
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = err.message || "Leaderboard unavailable — database offline";
+    dom.homeLeaderboard.appendChild(li);
     setPill("offline", "err");
   }
 }
