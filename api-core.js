@@ -310,7 +310,11 @@ export async function handleApi(req, res, url) {
       }
 
       if (parts[2] === "state" && req.method === "GET") {
-        const room = await findRoomByCode(String(parts[3] || "").toUpperCase());
+        // code can arrive as /rooms/state/CODE or /rooms/state?code=CODE.
+        // The query form is required on Vercel, where a nested catch-all
+        // route only receives ONE path segment (rooms/state/CODE 404s there).
+        const code = String(parts[3] || url.searchParams.get("code") || "").toUpperCase();
+        const room = await findRoomByCode(code);
         if (!room) return json(404, { error: "Room not found" });
         const players = await roomPlayers(room.id);
         const seat = players.find((p) => p.id === user.id)?.seat ?? -1;
