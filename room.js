@@ -432,18 +432,24 @@
           oring.classList.remove("racing");
         }
       }
-      // SNEAK badge: marks the seats you're reading
+      // SNEAK toggle button: on = peek at this player's hand
       let badge = row.querySelector(".sneak-badge");
       if (R.sneak) {
         if (!badge) {
-          badge = document.createElement("div");
+          badge = document.createElement("button");
           badge.className = "sneak-badge";
-          badge.textContent = "SNEAK";
+          badge.type = "button";
+          badge.textContent = "👁 SNEAK";
+          badge.addEventListener("click", (e) => {
+            e.stopPropagation();
+            row.classList.toggle("peek");
+            badge.textContent = row.classList.contains("peek") ? "🙈 HIDE" : "👁 SNEAK";
+          });
           row.appendChild(badge);
         }
       } else if (badge) badge.remove();
-      // SNEAK (server-gated): this viewer may see this player's real cards
-      const hasSneak = R.sneak && Array.isArray(p.hand) && p.hand.length;
+      // SNEAK (server-gated): visible only while the seat's peek is on
+      const hasSneak = R.sneak && row.classList.contains("peek") && Array.isArray(p.hand) && p.hand.length;
       let mini = row.querySelector(".sneak-hand");
       if (hasSneak) {
         if (!mini) {
@@ -496,10 +502,12 @@
       if (mpRing.className !== ringCls) mpRing.className = ringCls;
     }
 
-    // flight: when a remote player plays a card, fly a ghost from their seat to the pile
+    // flight: ONLY on a genuinely new remote play while the room is really
+    // playing — stale lastAction replays (rejoin/poll refresh) must not fly
     if (prev && prev.lastAction && g.lastAction &&
         prev.lastAction.at !== g.lastAction.at &&
-        g.lastAction.type === "play" && g.lastAction.seat !== youSeatIdx) {
+        g.lastAction.type === "play" && g.lastAction.seat !== youSeatIdx &&
+        R.roomStatus === "playing") {
       const row = oppZone.querySelector('[data-seat="' + g.lastAction.seat + '"]');
       if (row && window.Game && window.Game.flyCardToDiscard) {
         if (window.Game.tossDealer) window.Game.tossDealer($("mpDealer")); // dealer tossed it
@@ -928,8 +936,8 @@
       $("colorOverlay").classList.add("show");
       return;
     }
-    // optimistic flight: your card visibly leaves your hand toward the pile
-    if (window.Game && window.Game.flyFromEl) window.Game.flyFromEl(el, card);
+    // optimistic flight: only on YOUR turn (never on stale replays)
+    if (R.roomStatus === "playing" && window.Game && window.Game.flyFromEl) window.Game.flyFromEl(el, card);
     action("play", { index });
   }
 
