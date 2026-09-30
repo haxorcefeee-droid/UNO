@@ -296,13 +296,21 @@
 
     // turn ring + hints
     const myTurn = g.current === youSeatIdx && g.winner == null;
+    const iHavePlays = (g.players[youSeatIdx].hand || []).some((c) => playable(c, g));
     $("mpDrawHint").textContent = g.winner != null
       ? "Round over"
       : myTurn
-        ? (g.players[youSeatIdx].hand || []).some((c) => playable(c, g))
+        ? iHavePlays
           ? "Play a card from your hand"
-          : "No plays — tap the draw pile"
+          : "No plays — tap the glowing deck!"
         : "Waiting for " + (g.players[g.current] ? g.players[g.current].username : "…");
+
+    // beacon: no playable card on your turn → the deck glows and bounces
+    const mpDrawPileEl = $("mpDrawPile");
+    if (mpDrawPileEl) mpDrawPileEl.classList.toggle("hint-glow", myTurn && !iHavePlays);
+
+    // dealer flourish when a round just started
+    if (!prev && g && g.winner == null) dealerShow();
 
     startRadar(myTurn);
     setTableRing(g.activeColor);
@@ -358,6 +366,7 @@
       });
       const seatRows = oppZone.children;
       if (actingIdx >= 0 && seatRows[actingIdx] && window.Game && window.Game.flyCardToDiscard) {
+        if (window.Game.tossDealer) window.Game.tossDealer($("mpDealer")); // dealer tossed it
         window.Game.flyCardToDiscard(seatRows[actingIdx], 3);
       }
     }
@@ -409,6 +418,18 @@
       }
       if (a.uno) announce(name + " has UNO!", "bad");
     }
+  }
+
+  // dealer deal-in flourish when the round starts
+  function dealerShow() {
+    const d = $("mpDealer");
+    if (!d) return;
+    let n = 0;
+    const iv = setInterval(() => {
+      if (window.Game && window.Game.tossDealer) window.Game.tossDealer(d);
+      if (++n >= 4) clearInterval(iv);
+    }, 260);
+    if (window.Game && window.Game.sound) window.Game.sound.shuffle();
   }
 
   // running color ring around the whole table (multiplayer)
@@ -482,6 +503,7 @@
     $("startGameBtn").addEventListener("click", () => action("start", {}));
     $("mpDrawPile").addEventListener("click", () => {
       const before = countMyHand();
+      if (window.Game && window.Game.tossDealer) window.Game.tossDealer($("mpDealer"));
       action("draw", {}).then(() => {
         // 3D flip-in for the newly drawn card (poll brings the new hand)
         const ph = $("mpPlayerHand");

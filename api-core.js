@@ -334,10 +334,9 @@ export async function handleApi(req, res, url) {
         if (room.host_id !== user.id) return json(403, { error: "Only the host can start" });
         if (room.status === "playing") return json(400, { error: "Already playing" });
         let players = await roomPlayers(room.id);
-        if (players.length < 2) return json(400, { error: "Need at least 2 players (friends or bots)" });
 
-        // fill empty seats with bots
-        while (players.length < room.max_players) {
+        // fill empty seats with bots (a solo host starts against bots)
+        while (players.length < Math.max(room.max_players, 2)) {
           const used = players.map((p) => p.seat);
           let seat = 0;
           while (used.includes(seat)) seat++;
@@ -345,6 +344,7 @@ export async function handleApi(req, res, url) {
           await joinRoomPlayer(room.id, bot.id, seat);
           players = await roomPlayers(room.id);
         }
+        if (players.length < 2) return json(400, { error: "Need at least 2 players (friends or bots)" });
 
         const gamePlayers = players.map((p) => ({
           userId: p.id,
