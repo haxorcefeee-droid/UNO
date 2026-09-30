@@ -1587,7 +1587,47 @@ window.Game = {
   sound: Sound,
 };
 
-// JOIN ROOM CTA scrolls to the join box and focuses the code input
+// ---------- profile menu (all modes) ----------
+function openProfile() {
+  const u = Auth.user || (window.Rooms && window.Rooms.user);
+  if (!u) { toast("Sign in to see your profile", "bad"); return; }
+  $("profileName").textContent = u.username;
+  $("profileAvatar").textContent = u.username.slice(0, 3).toUpperCase();
+  $("profileCoins").textContent = u.coins;
+  $("profileWins").textContent = u.wins || 0;
+  const games = (u.wins || 0) + (u.losses || 0);
+  $("profileGames").textContent = games;
+  $("profileRate").textContent = games ? Math.round((u.wins || 0) / games * 100) + "%" : "0%";
+  $("profileStatsLine").textContent = (u.wins || 0) + "W · " + (u.losses || 0) + "L";
+  dom.colorOverlay && $("profileOverlay").classList.add("show");
+  if (hasAnime && !reducedMotion()) {
+    anime({ targets: "#profileOverlay .profile-modal", scale: [0.85, 1], opacity: [0, 1], duration: 280, easing: "easeOutBack" });
+  }
+}
+
+(function wireProfile() {
+  const btns = ["roomProfileBtn", "gameProfileBtn"];
+  btns.forEach((id) => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener("click", openProfile);
+  });
+  const close = document.getElementById("profileCloseBtn");
+  if (close) close.addEventListener("click", () => $("profileOverlay").classList.remove("show"));
+  const ov = document.getElementById("profileOverlay");
+  if (ov) ov.addEventListener("click", (e) => { if (e.target === ov) ov.classList.remove("show"); });
+})();
+
+// keep avatar chips + profile data fresh after auth changes
+const _renderAuthUI = renderAuthUI;
+renderAuthUI = function () {
+  _renderAuthUI();
+  const u = Auth.user;
+  const initials = u ? u.username.slice(0, 3).toUpperCase() : "YOU";
+  ["roomProfileAvatar", "gameProfileAvatar"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = initials;
+  });
+};
 (function () {
   const nav = document.getElementById("joinRoomNavBtn");
   if (nav) {

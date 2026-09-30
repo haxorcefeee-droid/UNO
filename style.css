@@ -320,10 +320,13 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   margin: auto;
   width: min(520px, 100%);
   text-align: center;
-  padding: calc(1.4rem + var(--sat)) 1.2rem calc(1.6rem + var(--sab));
+  padding: calc(1rem + var(--sat)) 1rem calc(1.2rem + var(--sab));
   max-height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .table-preview { display: flex; justify-content: center; margin-bottom: 0.7rem; }
@@ -538,10 +541,11 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(0.5rem + var(--sat)) 0.9rem 0.5rem;
-  background: linear-gradient(180deg, rgba(10, 20, 15, 0.85), rgba(10, 20, 15, 0.55));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  gap: 0.6rem;
+  padding: calc(0.4rem + var(--sat)) 0.7rem 0.4rem;
+  background: linear-gradient(180deg, rgba(7, 26, 45, 0.95), rgba(7, 26, 45, 0.72));
+  border-bottom: 1px solid rgba(169, 191, 213, 0.12);
+  gap: 0.5rem;
+  min-height: 52px;
 }
 
 .round-chip { font-weight: 800; font-size: 0.85rem; color: var(--muted); text-align: center; }
@@ -553,7 +557,8 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 0.5rem 0.9rem calc(0.7rem + var(--sab));
+  /* hero-corner layout: strict zones, no overlap. Side gutters hold avatars. */
+  padding: calc(0.55rem + var(--sat)) 0.6rem calc(0.6rem + var(--sab));
   min-height: 0;
   position: relative;
   background:
@@ -613,7 +618,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   50% { filter: brightness(1.3); }
 }
 
-/* ---------- seats ---------- */
+/* ---------- seats (hero-corner zones) ---------- */
 .opponent-zone {
   display: flex;
   flex-direction: row;
@@ -622,10 +627,27 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   align-items: flex-start;
   gap: 0.45rem;
   max-width: 100%;
+  min-height: 0;
 }
 
 /* multiplayer seats line up in a clean wrapping row */
 #mpOpponents { flex-direction: row; flex-wrap: wrap; gap: 0.45rem; }
+
+/* compact seat: avatar + name + count, tiny footprint, zero overlap */
+.seat {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: linear-gradient(180deg, rgba(13, 41, 66, 0.85), rgba(7, 26, 45, 0.85));
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 0.22rem 0.7rem 0.22rem 0.22rem;
+  backdrop-filter: blur(4px);
+  transition: box-shadow var(--t-med), border-color var(--t-med), transform var(--t-med);
+  max-width: 100%;
+}
+
+.seat .seat-info { min-width: 0; }
 
 .seat {
   display: flex;
@@ -723,12 +745,16 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .seat-name {
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   line-height: 1.1;
-  max-width: 40vw; /* long usernames ellipsize instead of pushing layout */
+  max-width: 24vw; /* long usernames ellipsize instead of pushing layout */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (min-width: 560px) {
+  .seat-name { max-width: 180px; }
 }
 .seat-cards { color: var(--muted); font-size: 0.72rem; }
 .seat-cards b { color: var(--text); }
@@ -833,6 +859,70 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
+/* ---------- topbar right cluster + avatar chip ---------- */
+.topbar-right { display: flex; align-items: center; gap: 0.45rem; }
+
+.avatar-chip {
+  background: none;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  transition: transform var(--t-fast) var(--ease-spring), border-color var(--t-fast);
+}
+
+.avatar-chip:hover { transform: scale(1.08); border-color: var(--accent-yellow); }
+
+.avatar-chip .avatar { position: static; width: 100%; height: 100%; font-size: 0.5rem; border-radius: 50%; }
+
+.avatar.big {
+  position: static;
+  width: 58px;
+  height: 58px;
+  font-size: 0.8rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+/* ---------- profile modal ---------- */
+.profile-modal { text-align: left; }
+
+.profile-hero { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1rem; }
+
+.profile-id { display: flex; flex-direction: column; min-width: 0; }
+
+.profile-id b { font-size: 1.15rem; font-weight: 900; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.profile-id span { font-size: 0.78rem; font-weight: 800; color: #6b5f52; }
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.pstat {
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-medium);
+  padding: 0.6rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.pstat b { font-size: 1rem; font-weight: 900; color: var(--ink); }
+
+.pstat span { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #6b5f52; }
+
+@media (max-width: 380px) {
+  .profile-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ---------- YOUR TURN banner ---------- */
 .turn-banner {
   position: absolute;
@@ -889,17 +979,43 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .btn-wide { width: 100%; }
 
-/* ---------- center zone ---------- */
+/* ---------- center zone: real 3D table ---------- */
 .center-zone {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(1rem, 6vw, 3rem);
+  gap: clamp(1.2rem, 7vw, 3.5rem);
   flex: 1;
   min-height: 0;
   position: relative;
-  padding: 0.4rem 0;
+  padding: 0.5rem 0;
+  perspective: 1100px; /* true 3D stage for the piles */
 }
+
+/* the felt surface tilts back like a real table (both modes) */
+.center-zone::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(92%, 560px);
+  height: min(78%, 300px);
+  transform: translate(-50%, -50%) rotateX(38deg) scale(1.18);
+  border-radius: 50% 50% 46% 54% / 60% 60% 40% 40%;
+  background:
+    radial-gradient(60% 50% at 50% 38%, rgba(255, 255, 255, 0.14), transparent 70%),
+    radial-gradient(90% 80% at 50% 50%, var(--felt) 0%, var(--felt-dark) 88%);
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.55),
+    inset 0 0 60px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12);
+  border: 3px solid rgba(255, 255, 255, 0.09);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* piles float above the 3D felt */
+.pile-group, .discard { position: relative; z-index: 1; transform-style: preserve-3d; }
 
 .pile-group { text-align: center; }
 
@@ -1163,15 +1279,18 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   width: var(--card-w);
   height: var(--card-h);
   border-radius: 12px;
-  background: #fff;
+  background: linear-gradient(160deg, #ffffff, #eef2f6);
   padding: 4px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.65) inset,
+    0 10px 24px rgba(0, 0, 0, 0.42);
   display: grid;
   place-items: center;
   user-select: none;
   -webkit-user-select: none;
   overflow: hidden;
   touch-action: none; /* required for pointer-drag */
+  transform-style: preserve-3d;
 }
 
 .card .inner {
@@ -1961,17 +2080,45 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .dealer .d-arm { top: 35px; width: 24px; }
   .dealer .d-deck { left: calc(50% + 17px); top: 30px; width: 16px; height: 22px; }
   .dealer .d-tag { font-size: 0.42rem; }
-  /* piles stay thumb-sized and the table breathes */
-  .center-zone { gap: clamp(0.8rem, 5vw, 2rem); }
+  /* piles stay thumb-sized and the table breathes; 3D felt flattens a bit */
+  .center-zone { gap: clamp(0.9rem, 5vw, 2rem); }
+  .center-zone::before { transform: translate(-50%, -50%) rotateX(30deg) scale(1.1); height: min(74%, 260px); }
   .action-row { gap: 0.6rem; min-height: 44px; }
   .btn-uno { min-width: 84px; }
   .draw-hint { font-size: 0.7rem; }
+  /* topbar stays on one line, nothing wraps or overlaps */
+  .topbar { gap: 0.35rem; }
+  .round-chip { font-size: 0.7rem; }
+  .btn-ghost { padding: 0.4rem 0.7rem; font-size: 0.72rem; }
+  .avatar-chip { width: 30px; height: 30px; }
+  .coin-chip { font-size: 0.72rem; padding: 0.25rem 0.55rem; }
   /* victory overlay fits phones */
   .victory-inner { padding: 1rem 1.2rem; }
   .victory-wins { font-size: 0.68rem; }
   /* modals fit small screens without scroll-skip */
   .modal { padding: 1.1rem; }
   .over-title { font-size: 1.45rem; }
+}
+
+/* ---------- landscape phones: use width, protect height ---------- */
+@media (max-height: 480px) and (orientation: landscape) {
+  .topbar { min-height: 40px; padding-top: calc(0.25rem + var(--sat)); padding-bottom: 0.25rem; }
+  .table { padding-top: 0.3rem; padding-bottom: calc(0.3rem + var(--sab)); }
+  .opponent-hand { min-height: 34px; }
+  .dealer { width: 40px; height: 52px; margin-bottom: 0.15rem; }
+  .dealer .d-head { width: 19px; height: 19px; top: 6px; }
+  .dealer .d-hair { width: 22px; top: 2px; }
+  .dealer .d-body { width: 25px; height: 21px; }
+  .dealer .d-arm { top: 27px; width: 19px; }
+  .dealer .d-deck { left: calc(50% + 14px); top: 23px; width: 13px; height: 18px; }
+  .dealer .d-tag { display: none; }
+  .center-zone { gap: clamp(0.8rem, 4vw, 2rem); }
+  .center-zone::before { transform: translate(-50%, -50%) rotateX(24deg) scale(1.05); height: 86%; }
+  :root { --card-w: clamp(46px, 9vh, 72px); }
+  .hand { min-height: calc(var(--card-h) + 14px); padding-top: 6px; }
+  .action-row { min-height: 38px; }
+  .seat-ring, .seat-ring svg { width: 38px; height: 38px; }
+  .play-note { bottom: calc(6px + var(--sab)); font-size: 0.72rem; }
 }
 
 /* ---------- slower, game-feel pacing on all devices ---------- */

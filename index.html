@@ -112,7 +112,12 @@
       <div class="topbar-center">
         <div class="round-chip">Room <b id="roomCode">—</b> · <span id="roomStatus">lobby</span></div>
       </div>
-      <div class="coin-chip small">🪙 <b id="roomCoins">0</b></div>
+      <div class="topbar-right">
+        <div class="coin-chip small">🪙 <b id="roomCoins">0</b></div>
+        <button class="avatar-chip" id="roomProfileBtn" type="button" aria-label="Profile">
+          <span class="avatar mini you" id="roomProfileAvatar">YOU</span>
+        </button>
+      </div>
     </header>
 
     <main class="table" id="roomTable">
@@ -216,7 +221,12 @@
       <div class="topbar-center">
         <div class="round-chip">Round <b id="roundNum">1</b> · Match <b id="matchScore">0 : 0</b></div>
       </div>
-      <div class="coin-chip small">🪙 <b id="gameCoins">0</b></div>
+      <div class="topbar-right">
+        <div class="coin-chip small">🪙 <b id="gameCoins">0</b></div>
+        <button class="avatar-chip" id="gameProfileBtn" type="button" aria-label="Profile">
+          <span class="avatar mini you" id="gameProfileAvatar">YOU</span>
+        </button>
+      </div>
     </header>      <main class="table">
         <div class="turn-banner" id="turnBanner" hidden>YOUR TURN</div>
       <!-- Opponent -->
@@ -290,6 +300,28 @@
     <div class="toast-stack" id="toastStack"></div>
     <div class="bubble" id="cpuBubble" hidden>CPU: UNO!</div>
   </section>
+
+  <!-- ===== PROFILE MENU (all modes) ===== -->
+  <div class="overlay" id="profileOverlay">
+    <div class="modal profile-modal">
+      <div class="profile-hero">
+        <div class="avatar big you" id="profileAvatar">YOU</div>
+        <div class="profile-id">
+          <b id="profileName">—</b>
+          <span id="profileStatsLine">0W · 0L</span>
+        </div>
+      </div>
+      <div class="profile-stats">
+        <div class="pstat"><b id="profileCoins">0</b><span>🪙 Coins</span></div>
+        <div class="pstat"><b id="profileWins">0</b><span>🏆 Wins</span></div>
+        <div class="pstat"><b id="profileGames">0</b><span>🎮 Games</span></div>
+        <div class="pstat"><b id="profileRate">0%</b><span>📈 Win rate</span></div>
+      </div>
+      <div class="over-actions">
+        <button id="profileCloseBtn" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== COLOR PICKER ===== -->
   <div class="overlay" id="colorOverlay">
