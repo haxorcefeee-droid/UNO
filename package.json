@@ -1,0 +1,18 @@
+{
+  "name": "uno-neon",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "UNO card game — simple HTML/JS frontend with a Neon Postgres leaderboard",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=19"
+  }
+}

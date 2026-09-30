@@ -1,91 +1,54 @@
-# UNO Online — Multiplayer Card Game
+# UNO — Real Card Table
 
-A full-stack real-time multiplayer UNO game built with React, Node.js, Socket.IO, and TypeScript.
+A full UNO card game with a realistic table experience: physical card flights (anime.js),
+radar turn timer, accounts, coin economy, and multiplayer rooms you can play with friends
+(or bots). All state lives in a Neon serverless Postgres database.
 
-## Project Structure
+## Features
+
+- 🃏 Classic UNO vs the House Bot (full rules: Skip, Reverse, +2, Wild, Wild +4, UNO calls)
+- 🎬 anime.js choreography — cards fly from the deck to hands, arc onto the discard pile,
+  CPU cards flip face-up mid-air, hands shake when hit with draw penalties
+- ⏱️ 20s radar turn timer on each player's avatar
+- 👤 Accounts (scrypt-hashed passwords, session tokens)
+- 🚪 Multiplayer rooms — share a 5-letter code with friends, fill empty seats with bots,
+  authoritative server-side engine with optimistic locking
+- 🪙 Coin economy — room antes, winner takes the pot (10% house rake), ±25 vs-bot rounds
+- 🏆 Global leaderboard
+
+## Architecture
 
 ```
-UNO/
-├── backend/          # Node.js + Express + Socket.IO server
-│   └── src/
-│       ├── auth/         JWT helpers
-│       ├── game/         UNO engine, deck, room manager, types
-│       ├── middleware/   Auth middleware
-│       ├── models/       User model (in-memory)
-│       ├── routes/       REST API routes
-│       └── socket/       Socket.IO event handlers
-└── frontend/         # React + TypeScript + Tailwind + Vite
-    └── src/
-        ├── components/
-        │   ├── auth/     Login, Register, ProtectedRoute
-        │   ├── chat/     ChatPanel
-        │   ├── game/     GameBoard, UnoCard, ColorPicker, PlayerSeat, GameOverModal
-        │   └── lobby/    LobbyPage, RoomPage, RoomList, modals
-        ├── hooks/        useSocket (Socket.IO event wiring)
-        ├── services/     api.ts (Axios), socket.ts (Socket.IO client)
-        ├── store/        authStore, gameStore (Zustand)
-        └── types/        Shared TypeScript types
+├─ index.html / style.css / game.js / room.js   vanilla JS frontend (no framework)
+├─ vendor/anime.min.js                          anime.js v3.2.2 (vendored, no CDN)
+├─ server.js                                    dev/preview server (static + API)
+├─ api-core.js                                  shared API logic (used by both targets)
+├─ uno-engine.js                                authoritative UNO engine (server-side)
+├─ db.js                                        Neon Postgres layer (serverless HTTP driver)
+├─ api/index.js                                 Vercel serverless catch-all for /api/*
+├─ scripts/build.mjs                            copies static files to dist/
+└─ vercel.json                                  Vercel config (static + function)
 ```
 
-## Quick Start
+The game state for room play is stored in `rooms.game_state` (JSONB) and advanced by the
+shared engine, so the same rules run locally and on Vercel.
 
-### 1. Install dependencies
+## Run locally / on Freebuff
 
 ```bash
-# Backend
-cd backend
 npm install
-
-# Frontend
-cd ../frontend
-npm install
+npm run dev          # serves the game + API on :3000
 ```
 
-### 2. Configure environment
+Set `DATABASE_URL` (Neon connection string) for accounts/rooms/coins/leaderboard — without
+it the game still works in vs-bot mode with a local name.
 
-The backend `.env` is pre-configured for local development. Change `JWT_SECRET` before going to production.
+## Deploy to Vercel
 
-### 3. Run in development
+1. Push this repo to GitHub and import it in Vercel (framework preset: **Other**).
+2. Add the environment variable `DATABASE_URL` with your Neon connection string
+   (use the **pooled** connection string; Neon serverless driver goes over HTTPS).
+3. Deploy. Vercel serves the static game and runs `api/index.js` for every `/api/*` call.
 
-Open two terminals:
-
-```bash
-# Terminal 1 — Backend (http://localhost:3001)
-cd backend
-npm run dev
-
-# Terminal 2 — Frontend (http://localhost:5173)
-cd frontend
-npm run dev
-```
-
-Then open http://localhost:5173 in your browser.
-
-## Game Features (Phase 1)
-
-- ✅ User registration & login with JWT
-- ✅ Create / join rooms with optional passwords
-- ✅ Full UNO rules: Skip, Reverse, Draw 2, Wild, Wild Draw 4
-- ✅ Draw card stacking (chain Draw 2s and Draw 4s)
-- ✅ UNO declaration + challenge system
-- ✅ Real-time multiplayer via Socket.IO (2–10 players)
-- ✅ In-game text chat
-
-## Roadmap
-
-- **Phase 2** — Friends system, voice chat (Agora/LiveKit)
-- **Phase 3** — Wallet system, virtual coins → real money (Stripe)
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
-| State | Zustand |
-| Routing | React Router v6 |
-| Real-time | Socket.IO client |
-| HTTP | Axios |
-| Backend | Node.js, Express, TypeScript |
-| Real-time | Socket.IO server |
-| Auth | JWT (jsonwebtoken), bcryptjs |
-| Database | In-memory (swap for PostgreSQL) |
+No other configuration needed — `vercel.json` already wires the build, output directory,
+API rewrites and caching.

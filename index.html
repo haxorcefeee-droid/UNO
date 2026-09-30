@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNO — Real Card Table</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="room-light" aria-hidden="true"></div>
+
+  <!-- ===== HOME / LOBBY ===== -->
+  <section id="home" class="screen active">
+    <div class="home-inner">
+      <div class="table-preview" aria-hidden="true">
+        <div class="tp-card red"><span class="corner tl">1</span><span class="oval"></span><span class="val">1</span><span class="corner br">1</span></div>
+        <div class="tp-card wild"><span class="corner tl">★</span><span class="oval"></span><span class="val">★</span><span class="corner br">★</span></div>
+        <div class="tp-card blue"><span class="corner tl">7</span><span class="oval"></span><span class="val">7</span><span class="corner br">7</span></div>
+      </div>
+      <h1 class="brand">UNO</h1>
+      <p class="tagline">The classic card game — played at a real table</p>
+
+      <div class="home-card">
+        <div id="authArea">
+          <label>Getting started</label>
+          <input id="playerName" maxlength="16" placeholder="Pick a name…" autocomplete="off" />
+          <input id="playerPass" type="password" maxlength="64" placeholder="Password (4+ chars)" autocomplete="off" />
+          <div class="auth-row">
+            <button id="loginBtn" class="btn btn-ghost">SIGN IN</button>
+            <button id="registerBtn" class="btn btn-primary">CREATE ACCOUNT</button>
+          </div>
+          <p class="hint" id="authMsg">Accounts keep your coins and leaderboard place.</p>
+        </div>
+        <div id="userArea" hidden>
+          <div class="wallet">
+            <div class="wallet-user"><span class="avatar mini you" id="miniAvatar">YOU</span><b id="userName">—</b></div>
+            <div class="coin-chip">🪙 <b id="userCoins">0</b></div>
+          </div>
+          <div class="stats-row">
+            <span>W <b id="userWins">0</b></span>
+            <span>L <b id="userLosses">0</b></span>
+          </div>
+          <button id="playCpuBtn" class="btn btn-primary">PLAY vs BOT</button>
+          <button id="openRoomsBtn" class="btn btn-ghost">MULTIPLAYER ROOMS</button>
+          <button id="logoutBtn" class="btn btn-ghost">SIGN OUT</button>
+        </div>
+      </div>
+
+      <div class="home-leaderboard">
+        <h2>🏆 Hall of Fame <span class="db-pill" id="dbPillHome">● connecting</span></h2>
+        <ol id="homeLeaderboard" class="lb-list"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ROOMS LOBBY ===== -->
+  <section id="rooms" class="screen">
+    <div class="home-inner">
+      <div class="rooms-head">
+        <h2 class="section-title">🎴 Multiplayer Rooms</h2>
+        <button id="roomsBackBtn" class="btn btn-ghost">⟵ Back</button>
+      </div>
+
+      <div class="home-card">
+        <div class="create-room">
+          <div class="field">
+            <label>Room name/ ante</label>
+            <input id="roomAnte" type="number" min="0" max="500" value="25" />
+          </div>
+          <button id="createRoomBtn" class="btn btn-primary">CREATE ROOM</button>
+        </div>
+        <div class="join-room">
+          <input id="joinCode" maxlength="5" placeholder="CODE" class="code-input" />
+          <button id="joinRoomBtn" class="btn btn-primary">JOIN</button>
+        </div>
+        <p class="hint" id="roomsMsg"></p>
+      </div>
+
+      <div class="home-leaderboard">
+        <h2>Public rooms <span class="db-pill" id="roomsPill">● loading</span></h2>
+        <div id="roomsList" class="rooms-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ROOM (waiting + playing) ===== -->
+  <section id="roomScreen" class="screen">
+    <header class="topbar">
+      <button id="leaveRoomBtn" class="btn btn-ghost">⟵ Leave</button>
+      <div class="topbar-center">
+        <div class="round-chip">Room <b id="roomCode">—</b> · <span id="roomStatus">lobby</span></div>
+      </div>
+      <div class="coin-chip small">🪙 <b id="roomCoins">0</b></div>
+    </header>
+
+    <main class="table" id="roomTable">
+      <!-- waiting room overlay -->
+      <div class="waiting" id="waitingPanel">
+        <h3>Waiting room</h3>
+        <div class="seat-grid" id="seatGrid"></div>
+        <div class="over-actions">
+          <button id="readyBtn" class="btn btn-ghost">READY</button>
+          <button id="startGameBtn" class="btn btn-primary" hidden>START GAME (fill with bots)</button>
+        </div>
+        <p class="hint">Share the code <b id="roomCodeShare">—</b> with friends. Empty seats are filled with bots.</p>
+      </div>
+
+      <!-- live game (mirrors the vs-bot table) -->
+      <div id="mpGame" hidden>
+        <div class="opponent-zone" id="mpOpponents"></div>
+
+        <div class="center-zone">
+          <div class="pile-group">
+            <div class="pile-label">Draw</div>
+            <div class="card back draw-pile" id="mpDrawPile"><span id="mpDrawCount">0</span></div>
+          </div>
+          <div class="discard" id="mpDiscardPile"></div>
+        </div>
+
+        <div class="announce" id="mpAnnounce" hidden></div>
+
+        <div class="player-zone">
+          <div class="action-row">
+            <button id="mpUnoBtn" class="btn btn-uno" disabled>UNO!</button>
+            <div class="draw-hint" id="mpDrawHint"></div>
+          </div>
+          <div class="hand" id="mpPlayerHand"></div>
+          <div class="seat you" id="mpYouSeat">
+            <div class="seat-ring" data-side="you">
+              <svg viewBox="0 0 72 72">
+                <circle class="ring-track" cx="36" cy="36" r="32" pathLength="100" />
+                <circle class="ring-fill" id="mpYouRing" cx="36" cy="36" r="32" pathLength="100" />
+              </svg>
+              <div class="avatar you">YOU</div>
+              <div class="ring-seconds" id="mpYouSeconds" hidden>20</div>
+            </div>
+            <div class="seat-info">
+              <div class="seat-name" id="mpYouName">YOU</div>
+              <div class="seat-cards"><b id="mpYouCount">0</b> cards</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <div class="toast-stack" id="mpToastStack"></div>
+  </section>
+
+  <!-- ===== VS BOT GAME ===== -->
+  <section id="game" class="screen">
+    <header class="topbar">
+      <button id="quitBtn" class="btn btn-ghost">⟵ Leave table</button>
+      <div class="topbar-center">
+        <div class="round-chip">Round <b id="roundNum">1</b> · Match <b id="matchScore">0 : 0</b></div>
+      </div>
+      <div class="coin-chip small">🪙 <b id="gameCoins">0</b></div>
+    </header>
+
+    <main class="table">
+      <!-- Opponent -->
+      <div class="opponent-zone">
+        <div class="seat" id="cpuSeat">
+          <div class="seat-ring" data-side="cpu">
+            <svg viewBox="0 0 72 72">
+              <circle class="ring-track" cx="36" cy="36" r="32" pathLength="100" />
+              <circle class="ring-fill" id="cpuRing" cx="36" cy="36" r="32" pathLength="100" />
+            </svg>
+            <div class="avatar cpu">CPU</div>
+            <div class="ring-seconds" id="cpuSeconds" hidden>20</div>
+          </div>
+          <div class="seat-info">
+            <div class="seat-name">House Bot</div>
+            <div class="seat-cards"><b id="cpuCount">7</b> cards</div>
+          </div>
+          <div class="seat-score" id="cpuTotal">0 pts</div>
+        </div>
+        <div class="opponent-hand" id="opponentHand"></div>
+      </div>
+
+      <!-- Center piles -->
+      <div class="center-zone">
+        <div class="pile-group">
+          <div class="pile-label">Draw</div>
+          <div class="card back draw-pile" id="drawPile"><span id="drawCount">62</span></div>
+        </div>
+        <div class="discard" id="discardPile"></div>
+      </div>
+
+      <!-- Table announcements -->
+      <div class="announce" id="announce" hidden></div>
+
+      <!-- Player -->
+      <div class="player-zone">
+        <div class="action-row">
+          <button id="unoBtn" class="btn btn-uno" disabled>UNO!</button>
+          <div class="draw-hint" id="drawHint">It's your turn — play a card</div>
+        </div>
+        <div class="hand" id="playerHand"></div>
+        <div class="seat you" id="youSeat">
+          <div class="seat-ring" data-side="you">
+            <svg viewBox="0 0 72 72">
+              <circle class="ring-track" cx="36" cy="36" r="32" pathLength="100" />
+              <circle class="ring-fill" id="youRing" cx="36" cy="36" r="32" pathLength="100" />
+            </svg>
+            <div class="avatar you">YOU</div>
+            <div class="ring-seconds" id="youSeconds" hidden>20</div>
+          </div>
+          <div class="seat-info">
+            <div class="seat-name" id="youName">PLAYER</div>
+            <div class="seat-cards"><b id="youCount">7</b> cards</div>
+          </div>
+          <div class="seat-score" id="youTotal">0 pts</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Toasts -->
+    <div class="toast-stack" id="toastStack"></div>
+    <div class="bubble" id="cpuBubble" hidden>CPU: UNO!</div>
+  </section>
+
+  <!-- ===== COLOR PICKER ===== -->
+  <div class="overlay" id="colorOverlay">
+    <div class="modal">
+      <h3>Choose a color</h3>
+      <div class="color-grid">
+        <button class="color-choice red" data-color="red" aria-label="Red"></button>
+        <button class="color-choice yellow" data-color="yellow" aria-label="Yellow"></button>
+        <button class="color-choice green" data-color="green" aria-label="Green"></button>
+        <button class="color-choice blue" data-color="blue" aria-label="Blue"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME OVER ===== -->
+  <div class="overlay" id="overOverlay">
+    <div class="modal over-modal">
+      <div class="over-title" id="overTitle">Round over</div>
+      <div class="over-sub" id="overSub"></div>
+      <div class="over-points" id="overPoints"></div>
+      <div class="coin-result" id="coinResult" hidden></div>
+      <div class="over-actions">
+        <button id="nextRoundBtn" class="btn btn-primary">Next round</button>
+        <button id="homeBtn" class="btn btn-ghost">Main menu</button>
+      </div>
+      <div class="save-note" id="saveNote" hidden>Saving result…</div>
+    </div>
+  </div>
+
+  <!-- ===== RULES ===== -->
+  <div class="overlay" id="rulesOverlay">
+    <div class="modal">
+      <h3>House rules</h3>
+      <ul class="rules-list">
+        <li>Match the top card by <b>color</b>, <b>number</b> or <b>symbol</b>.</li>
+        <li><b>Skip ⊘</b> · <b>Reverse ⇄</b> (acts as Skip in 1v1) · <b>Draw Two +2</b>.</li>
+        <li><b>Wild</b> plays on anything — pick the next color. <b>Wild Draw Four</b> also makes your opponent draw 4.</li>
+        <li>No playable card? Draw one — if it plays, you may play it immediately.</li>
+        <li>Down to one card? Hit <b>UNO!</b> before your next turn or draw 2 as a penalty.</li>
+        <li>Room games: everyone posts the <b>ante</b>, the winner takes the pot (10% house cut).</li>
+        <li>Results are stored in a Neon Postgres cloud database.</li>
+      </ul>
+      <div class="over-actions">
+        <button id="closeRulesBtn" class="btn btn-primary">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/anime.min.js"></script>
+  <script src="room.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
