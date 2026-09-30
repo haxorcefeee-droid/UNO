@@ -625,17 +625,45 @@ function fitHand(n) {
   document.documentElement.style.setProperty("--card-w", w + "px");
 }
 
+// the discard pile of the SCREEN THAT IS ACTIVE (multiplayer room vs bot table)
+function activeDiscardPile() {
+  const room = document.getElementById("roomScreen");
+  if (room && room.classList.contains("active")) {
+    const mp = document.getElementById("mpDiscardPile");
+    if (mp) return mp;
+  }
+  return dom.discardPile;
+}
+
 // multiplayer helper: fly a ghost card from an opponent's seat onto the discard pile
 async function flyCardToDiscard(containerEl, rot) {
-  if (!containerEl || !dom.discardPile) return;
+  const toPile = activeDiscardPile();
+  if (!containerEl || !toPile) return;
   const fromR = rectOf(containerEl);
-  const toR = rectOf(dom.discardPile);
+  const toR = rectOf(toPile);
   const g = ghostEl(null, 96, 144, false);
   await flyGhost(
     g,
     { x: fromR.left + fromR.width / 2 - 48, y: fromR.top, s: 1 },
     { x: toR.left, y: toR.top, s: 1 },
     { rot: rot || topTilt(), tilt: 22, ms: FLIGHT_MS, ease: "easeOutCubic" }
+  );
+}
+
+// multiplayer helper: fly MY played card from its hand element to the pile
+async function flyFromEl(el, card) {
+  const toPile = activeDiscardPile();
+  if (!el || !toPile) return;
+  const w = Math.min(el.getBoundingClientRect().width || 72, 96);
+  const h = w * 1.5;
+  const fromR = rectOf(el);
+  const toR = rectOf(toPile);
+  const g = ghostEl(card || null, w, h, !!card);
+  await flyGhost(
+    g,
+    { x: fromR.left + fromR.width / 2 - w / 2, y: fromR.top, s: 1 },
+    { x: toR.left, y: toR.top, s: 1 },
+    { rot: topTilt(), tilt: 22, ms: FLIGHT_MS, ease: "easeOutCubic" }
   );
 }
 const Ring = {
@@ -1545,6 +1573,7 @@ window.Game = {
   unoMoment,
   setTableRing,
   tossDealer,
+  flyFromEl,
   sound: Sound,
 };
 
