@@ -183,7 +183,13 @@
 
   async function createRoom() {
     try {
-      const data = await api("rooms/create", { method: "POST", body: { ante: Number($("roomAnte").value) || 25 } });
+      const data = await api("rooms/create", {
+        method: "POST",
+        body: {
+          ante: Number($("roomAnte").value) || 25,
+          maxPlayers: Number($("roomMaxPlayers").value) || 4,
+        },
+      });
       enterRoom(data.room);
     } catch (err) {
       $("roomsMsg").textContent = err.message;
@@ -299,6 +305,7 @@
         : "Waiting for " + (g.players[g.current] ? g.players[g.current].username : "…");
 
     startRadar(myTurn);
+    setTableRing(g.activeColor);
 
     // opponents (everyone except you)
     const oppZone = $("mpOpponents");
@@ -372,8 +379,15 @@
       }
       ph.appendChild(el);
     });
+    const wasUnoTime = $("mpUnoBtn").disabled === false;
     $("mpUnoBtn").disabled = !(hand && hand.length === 1 && myTurn);
     if (window.Game && window.Game.fitHand) window.Game.fitHand(Math.max(hand.length, 7));
+    // UNO! moment: button pops + screen pulse when you're down to one card
+    const nowUnoTime = hand && hand.length === 1 && myTurn;
+    if (nowUnoTime && !wasUnoTime) {
+      if (window.Game && window.Game.unoMoment) window.Game.unoMoment();
+      toast("One card left — hit UNO!", "good");
+    }
 
     // announce diffs
     if (prev && prev.lastAction && g.lastAction && prev.lastAction.at !== g.lastAction.at) {
@@ -395,6 +409,15 @@
       }
       if (a.uno) announce(name + " has UNO!", "bad");
     }
+  }
+
+  // running color ring around the whole table (multiplayer)
+  function setTableRing(color) {
+    const table = $("roomTable");
+    if (!table) return;
+    const want = color ? "table table-ring " + color : "table";
+    if (table.className === want) return; // don't restart the animation every poll
+    table.className = want;
   }
 
   function countMyHand() {

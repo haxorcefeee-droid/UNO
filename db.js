@@ -240,11 +240,11 @@ export async function recordResult(userId, won) {
 }
 
 // ---------- rooms ----------
-export async function createRoom({ code, hostId, ante, isPublic }) {
+export async function createRoom({ code, hostId, ante, isPublic, maxPlayers }) {
   const sql = getSql();
   const [row] = await sql`
-    INSERT INTO rooms (code, host_id, ante, is_public)
-    VALUES (${code}, ${hostId}, ${ante}, ${isPublic})
+    INSERT INTO rooms (code, host_id, ante, is_public, max_players)
+    VALUES (${code}, ${hostId}, ${ante}, ${isPublic}, ${maxPlayers || 4})
     RETURNING *
   `;
   return row;

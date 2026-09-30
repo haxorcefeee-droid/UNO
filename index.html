@@ -72,9 +72,19 @@
 
       <div class="home-card">
         <div class="create-room">
-          <div class="field">
-            <label>Room name/ ante</label>
-            <input id="roomAnte" type="number" min="0" max="500" value="25" />
+          <div class="field-row">
+            <div class="field">
+              <label for="roomAnte">Bet amount (🪙)</label>
+              <input id="roomAnte" type="number" min="0" max="500" value="25" inputmode="numeric" />
+            </div>
+            <div class="field">
+              <label for="roomMaxPlayers">Players</label>
+              <select id="roomMaxPlayers">
+                <option value="2">2 players</option>
+                <option value="3">3 players</option>
+                <option value="4" selected>4 players</option>
+              </select>
+            </div>
           </div>
           <button id="createRoomBtn" class="btn btn-primary">CREATE ROOM</button>
         </div>

@@ -75,6 +75,15 @@ body {
   letter-spacing: 0.06em;
   color: #fff;
   text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 10px 40px rgba(0, 0, 0, 0.6);
+  padding: 0 6vw; /* never bleed off-screen on phones */
+}
+
+.fx-burst .fx-main,
+.fx-burst .fx-sub {
+  white-space: normal;
+  line-height: 1.15;
+  max-width: 88vw;
+  text-align: center;
 }
 
 .fx-burst.d2 { background: radial-gradient(circle at 50% 50%, rgba(244, 197, 49, 0.28), transparent 70%); }
@@ -164,13 +173,53 @@ body {
 
 .btn-uno:not(:disabled) { animation: unoBreathe 1.8s ease-in-out infinite; }
 
+/* UNO! moment: button erupts while you're on your last card */
+.btn-uno.uno-shout {
+  animation: unoShout 0.55s var(--ease-spring) 3;
+}
+
+@keyframes unoShout {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35) rotate(-4deg); box-shadow: 0 0 0 10px rgba(255, 216, 77, 0.35), 0 0 40px rgba(255, 216, 77, 0.8); }
+  70% { transform: scale(0.94) rotate(3deg); }
+  100% { transform: scale(1); }
+}
+
+/* full-screen pulse the moment UNO time arrives */
+body.uno-pulse::after {
+  content: "UNO!";
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: clamp(3.4rem, 18vw, 7rem);
+  font-style: italic;
+  letter-spacing: 0.06em;
+  color: #ffd84d;
+  text-shadow: 0 5px 0 #b3541e, 0 12px 44px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+  animation: unoFlash 1.4s var(--ease-spring) forwards;
+}
+
+@keyframes unoFlash {
+  0% { opacity: 0; transform: scale(0.4) rotate(-10deg); }
+  22% { opacity: 1; transform: scale(1.15) rotate(2deg); }
+  45% { transform: scale(1); }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
 @keyframes unoBreathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.06); }
 }
 
 /* ---------- inputs: 16px font so iOS doesn't zoom ---------- */
-input {
+input,
+select {
   font-size: 16px;
   font-family: var(--font);
   background: rgba(0, 0, 0, 0.35);
@@ -185,7 +234,10 @@ input {
   width: 100%;
 }
 
-input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.2); }
+select { appearance: none; -webkit-appearance: none; }
+
+input:focus,
+select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.2); }
 
 /* ---------- home ---------- */
 .home-inner {
@@ -368,8 +420,12 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
 .rooms-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; }
 .section-title { font-size: 1.3rem; font-weight: 900; }
 
-.create-room { display: flex; gap: 0.7rem; align-items: flex-end; }
-.create-room .field { flex: 1; }
+/* room form: two fields side by side on wide screens, stacked on phones */
+.create-room { display: flex; gap: 0.7rem; align-items: flex-end; flex-wrap: wrap; }
+.create-room .field { flex: 1 1 140px; min-width: 0; }
+.create-room .btn { width: 100%; }
+.field-row { display: flex; gap: 0.7rem; flex-wrap: wrap; width: 100%; }
+.field-row .field { flex: 1 1 140px; min-width: 0; }
 .create-room label {
   display: block;
   text-align: left;
@@ -452,6 +508,33 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   background-size: 5px 5px;
   mix-blend-mode: overlay;
   pointer-events: none;
+}
+
+/* ---------- running color ring around the table edge ----------
+   The wooden frame takes on the ACTIVE color and a light keeps
+   traveling around it, so players always see which color is live. */
+.table.table-ring::before {
+  background:
+    linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.55) 48%, transparent 62%) border-box,
+    linear-gradient(var(--table-ring, var(--wood)), var(--table-ring-dark, var(--wood-dark))) border-box;
+  background-size: 300% 100%, 100% 100%;
+  opacity: 1;
+  animation: frameFlow 3.4s linear infinite, ringBreathe 2.6s ease-in-out infinite;
+}
+
+.table.table-ring.red { --table-ring: #e33b3b; --table-ring-dark: #8f1f1d; }
+.table.table-ring.yellow { --table-ring: #f4c531; --table-ring-dark: #9a7414; }
+.table.table-ring.green { --table-ring: #3aa554; --table-ring-dark: #1c5e30; }
+.table.table-ring.blue { --table-ring: #2f6fd0; --table-ring-dark: #1a3f7e; }
+
+@keyframes frameFlow {
+  from { background-position: 220% 0, 0 0; }
+  to { background-position: -120% 0, 0 0; }
+}
+
+@keyframes ringBreathe {
+  0%, 100% { filter: brightness(0.95); }
+  50% { filter: brightness(1.3); }
 }
 
 /* ---------- seats ---------- */
@@ -546,7 +629,15 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   pointer-events: none;
 }
 
-.seat-name { font-weight: 800; font-size: 0.85rem; line-height: 1.1; }
+.seat-name {
+  font-weight: 800;
+  font-size: 0.85rem;
+  line-height: 1.1;
+  max-width: 40vw; /* long usernames ellipsize instead of pushing layout */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .seat-cards { color: var(--muted); font-size: 0.72rem; }
 .seat-cards b { color: var(--text); }
 .seat-score { font-weight: 800; font-size: 0.7rem; color: #ffd84d; margin-left: 0.4rem; }
@@ -710,15 +801,15 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   transform: translate(-50%, -50%);
   z-index: 40;
   font-weight: 900;
-  font-size: clamp(1.15rem, 4.5vw, 2rem);
-  letter-spacing: 0.08em;
+  font-size: clamp(1.05rem, 4.2vw, 1.9rem);
+  letter-spacing: 0.06em;
   color: #fff;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), 0 6px 24px rgba(0, 0, 0, 0.55);
   pointer-events: none;
-  white-space: nowrap;
-  max-width: 96vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal; /* wrap instead of running off the screen */
+  width: max-content;
+  max-width: 88vw;
+  line-height: 1.3;
   text-align: center;
 }
 
@@ -1114,11 +1205,17 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   .btn-uno:not(:disabled),
   .seat.active-turn,
   .seat-ring.radar::after,
-  .color-ring.show { animation: none !important; }
+  .color-ring.show,
+  .room-light,
+  .pile-group,
+  .discard,
+  .table.table-ring::before,
+  .btn-primary::after { animation: none !important; }
   .card.ghost { display: none !important; }
   .fx-layer { display: none !important; }
   .card .card-flip { transition: none !important; }
   .card.face-down .card-flip { transform: none; }
+  body.uno-pulse::after { animation: none !important; content: none; }
 }
 
 /* ---------- small phones ---------- */
@@ -1137,3 +1234,42 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
 .color-ring.show { animation-duration: 2.4s; }
 .seat-ring.radar::after { animation-duration: 3.2s; }
 .fx-burst .fx-main, .fx-burst .fx-sub { animation-duration: 1.6s; }
+
+/* ---------- ambient life: drifting light + floating piles ---------- */
+@keyframes lightDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.75; }
+  50% { transform: translate3d(6%, 4%, 0) scale(1.12); opacity: 1; }
+}
+
+.room-light { animation: lightDrift 12s ease-in-out infinite; }
+
+@keyframes pileFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* float the wrappers, not the piles, so hover/drag transforms still work */
+.pile-group { animation: pileFloat 4.2s ease-in-out infinite; }
+.discard { animation: pileFloat 4.2s ease-in-out 0.6s infinite; }
+
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-18deg);
+  animation: btnShimmer 3.8s ease-in-out infinite;
+}
+
+@keyframes btnShimmer {
+  0%, 55% { left: -80%; }
+  75%, 100% { left: 130%; }
+}
