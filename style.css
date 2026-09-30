@@ -1179,6 +1179,37 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .opponent-hand.sneaking .card .corner { font-size: calc(46px * 0.15); }
 .opponent-hand.sneaking .card:first-child { margin-left: 0; }
 
+/* multiplayer SNEAK: mini face-up fan attached to each opponent seat */
+.sneak-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: 0.35rem;
+  max-height: 52px;
+  overflow: hidden;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+.sneak-hand .card {
+  width: 21px;
+  height: 30px;
+  margin-left: -7px;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.sneak-hand .card:first-child { margin-left: 0; }
+
+.sneak-hand .card .inner { inset: 1px; border-radius: 2px; }
+
+.sneak-hand .card .val { font-size: 9px; }
+
+.sneak-hand .card .corner { display: none; }
+
+/* the flying ghost is positioned from the document, not the seat */
+.card.ghost { position: fixed !important; }
+
 .hand .card:first-child { margin-left: 0; }
 
 .hand .card.playable {
@@ -1418,6 +1449,38 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .ring-seconds { font-size: 0.9rem; }
   .opponent-hand .card.back { width: 34px; height: 51px; margin-left: -15px; }
   .draw-hint { font-size: 0.72rem; }
+}
+
+/* ---------- mobile-first hardening (all phones) ---------- */
+@media (max-width: 560px) {
+  /* seats become compact chips that can wrap into rows */
+  .seat {
+    padding: 0.22rem 0.6rem 0.22rem 0.22rem;
+    gap: 0.4rem;
+    max-width: 100%;
+  }
+  .seat-ring, .seat-ring svg { width: 44px; height: 44px; }
+  .seat-name { font-size: 0.72rem; max-width: 26vw; }
+  .seat-cards { font-size: 0.62rem; }
+  .sneak-hand { max-height: 40px; }
+  .sneak-hand .card { width: 17px; height: 24px; margin-left: -6px; }
+  .sneak-hand .card .val { font-size: 7.5px; }
+  /* dealer scales down and never covers the piles */
+  .dealer { width: 50px; height: 66px; margin-bottom: 0.3rem; }
+  .dealer .d-head { width: 24px; height: 24px; top: 8px; }
+  .dealer .d-hair { width: 27px; top: 3px; }
+  .dealer .d-body { width: 32px; height: 27px; }
+  .dealer .d-arm { top: 35px; width: 24px; }
+  .dealer .d-deck { left: calc(50% + 17px); top: 30px; width: 16px; height: 22px; }
+  .dealer .d-tag { font-size: 0.42rem; }
+  /* piles stay thumb-sized and the table breathes */
+  .center-zone { gap: clamp(0.8rem, 5vw, 2rem); }
+  .action-row { gap: 0.6rem; min-height: 44px; }
+  .btn-uno { min-width: 84px; }
+  .draw-hint { font-size: 0.7rem; }
+  /* modals fit small screens without scroll-skip */
+  .modal { padding: 1.1rem; }
+  .over-title { font-size: 1.45rem; }
 }
 
 /* ---------- slower, game-feel pacing on all devices ---------- */
