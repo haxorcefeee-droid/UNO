@@ -36,6 +36,8 @@ const $ = (id) => document.getElementById(id);
 const dom = {
   home: $("home"),
   game: $("game"),
+  fxLayer: $("fxLayer") || document.querySelector(".fx-layer"),
+  colorRing: $("colorRing"),
   playerName: $("playerName"),
   homeLeaderboard: $("homeLeaderboard"),
   dbPillHome: $("dbPillHome"),
@@ -385,6 +387,7 @@ function renderAll(opts) {
   dom.playerHand.innerHTML = "";
   const myTurn = state.current === "you" && !state.over;
   const anyPlayable = playableCards().length > 0;
+  dom.playerHand.classList.toggle("my-turn", myTurn);
   state.you.forEach((card, i) => {
     const can = myTurn && canPlay(card);
     const el = renderCard(card, { playable: can, locked: myTurn && !can && anyPlayable });
@@ -704,6 +707,7 @@ async function startRound() {
   syncDiscard();
 
   state.busy = false;
+  setRing(dom.colorRing, state.activeColor);
   announce("Round " + state.round + " — your move", "good");
   Ring.start("you");
   Sound.turn();
@@ -737,20 +741,26 @@ function nextTurn() {
 function applySpecial(who, card) {
   if (card.value === "skip" || card.value === "reverse") {
     const youSkipped = who === "you";
+    playSpecialFX(youSkipped ? "skip" : "skip", youSkipped ? "Opponent loses a turn" : "You lose a turn");
     announce(youSkipped ? "OPPONENT SKIPPED!" : "YOU WERE SKIPPED!", youSkipped ? "good" : "bad");
     return true;
   }
   if (card.value === "draw2") {
     const victim = who === "you" ? "cpu" : "you";
+    playSpecialFX("d2", victim === "you" ? "You draw 2" : "Opponent draws 2");
     drawCardsAnimated(victim, 2);
     announce(victim === "you" ? "YOU DRAW 2!" : "OPPONENT DRAWS 2!", victim === "you" ? "bad" : "good");
     return false;
   }
   if (card.value === "wild4") {
     const victim = who === "you" ? "cpu" : "you";
+    playSpecialFX("w4", victim === "you" ? "You draw 4" : "Opponent draws 4");
     drawCardsAnimated(victim, 4);
     announce(victim === "you" ? "YOU DRAW 4!" : "OPPONENT DRAWS 4!", victim === "you" ? "bad" : "good");
     return false;
+  }
+  if (card.value === "wild") {
+    playSpecialFX("wild", "Color is now " + (state.activeColor || "chosen").toUpperCase());
   }
   return false;
 }
@@ -767,6 +777,9 @@ async function playCard(who, card, chosenColor, fromRect) {
 
   const keepsTurn = applySpecial(who, card);
   renderAll();
+
+  // active-color ring around the discard pile
+  setRing(dom.colorRing, state.activeColor);
 
   // physical flight: from the seat (you) or the opponent hand (cpu) to the discard
   const to = (() => {
@@ -814,14 +827,49 @@ async function playCard(who, card, chosenColor, fromRect) {
 function settleTopCard() {
   const top = dom.discardPile.lastElementChild;
   if (!top) return;
-  if (hasAnime && !reducedMotion()) {
-    A({
-      targets: top.querySelector(".inner"),
-      scale: [1.12, 1],
-      duration: 260,
-      easing: "easeOutQuad",
-    });
+  top.classList.add("pop");
+  setTimeout(() => top.classList.remove("pop"), 320);
+}
+
+// pulsing ring around the discard pile showing the running color
+function setRing(ringEl, color) {
+  if (!ringEl) return;
+  ringEl.className = "color-ring show " + color;
+}
+
+// full-screen special-card FX
+function playSpecialFX(kind, subtitle) {
+  if (!dom.fxLayer || reducedMotion()) return;
+  const burst = document.createElement("div");
+  burst.className = "fx-burst " + kind;
+  const main = document.createElement("div");
+  main.className = "fx-main";
+  main.textContent = {
+    d2: "+2",
+    w4: "+4",
+    skip: "SKIPPED!",
+    rev: "REVERSED!",
+    wild: "WILD!",
+  }[kind] || "";
+  burst.appendChild(main);
+  if (subtitle) {
+    const sub = document.createElement("div");
+    sub.className = "fx-sub";
+    sub.textContent = subtitle;
+    burst.appendChild(sub);
   }
+  dom.fxLayer.appendChild(burst);
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement("div");
+    s.className = "fx-streak";
+    const ang = (Math.PI * 2 * i) / 14 + Math.random() * 0.4;
+    const dist = 140 + Math.random() * 200;
+    s.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+    s.style.setProperty("--dy", Math.sin(ang) * dist + "px");
+    s.style.animationDelay = Math.random() * 0.12 + "s";
+    burst.appendChild(s);
+  }
+  setTimeout(() => burst.remove(), 1100);
 }
 
 // animated draw: ghost flies from the deck to the seat
@@ -834,8 +882,9 @@ async function drawCardsAnimated(who, n) {
 
     const seatEl = who === "you" ? dom.youSeat : dom.cpuSeat;
     const seatR = rectOf(seatEl);
-    const ghostW = who === "you" ? 96 : 40;
-    const ghostH = who === "you" ? 144 : 60;
+    const cardW = dom.drawPile.getBoundingClientRect().width || 96;
+    const ghostW = who === "you" ? cardW : cardW * 0.42;
+    const ghostH = ghostW * 1.5;
 
     const g = ghostEl(card, ghostW, ghostH, who === "you");
     const from = { x: deckC.x - ghostW / 2, y: deckC.y - ghostH / 2, s: 1 };
@@ -911,12 +960,111 @@ function commitPlay(card, chosenColor, fromRect) {
   }
 }
 
-dom.playerHand.addEventListener("click", (e) => {
+// ---------- drag & drop (pointer events, tap fallback) ----------
+const Drag = {
+  active: false,
+  card: null,
+  el: null,
+  startX: 0,
+  startY: 0,
+  moved: false,
+  offsetX: 0,
+  offsetY: 0,
+};
+
+function discardHitTest(x, y) {
+  const r = rectOf(dom.discardPile);
+  const pad = 34; // generous drop zone
+  return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+}
+
+function dragCleanup() {
+  if (Drag.el) Drag.el.classList.remove("dragging");
+  dom.drawPile.classList.remove("drag-over");
+  Drag.active = false;
+  Drag.el = null;
+  Drag.card = null;
+  Drag.moved = false;
+}
+
+dom.playerHand.addEventListener("pointerdown", (e) => {
+  if (state.over || state.busy || state.current !== "you") return;
   const el = e.target.closest(".card");
   if (!el) return;
   const idx = Array.prototype.indexOf.call(dom.playerHand.children, el);
   const card = state.you[idx];
-  if (card) onCardClick(card, el);
+  if (!card) return;
+  if (!canPlay(card)) {
+    // illegal card: give feedback on tap, but still allow drag visual? keep simple: reject
+    Drag.pendingTap = { card, el, can: false };
+    return;
+  }
+  Drag.pendingTap = { card, el, can: true };
+  Drag.active = true;
+  Drag.card = card;
+  Drag.el = el;
+  Drag.startX = e.clientX;
+  Drag.startY = e.clientY;
+  Drag.moved = false;
+  try { el.setPointerCapture(e.pointerId); } catch (err) {}
+});
+
+dom.playerHand.addEventListener("pointermove", (e) => {
+  if (!Drag.active || !Drag.el) return;
+  const dx = e.clientX - Drag.startX;
+  const dy = e.clientY - Drag.startY;
+  if (!Drag.moved && Math.hypot(dx, dy) < 12) return; // dead zone before drag starts
+  if (!Drag.moved) {
+    Drag.moved = true;
+    Drag.el.classList.add("dragging");
+    const r = rectOf(Drag.el);
+    Drag.offsetX = r.left;
+    Drag.offsetY = r.top;
+  }
+  Drag.el.style.transform =
+    "translate(" + dx + "px," + dy + "px) rotate(6deg) scale(1.06)";
+  if (discardHitTest(e.clientX, e.clientY)) {
+    dom.drawPile.classList.add("drag-over");
+  } else {
+    dom.drawPile.classList.remove("drag-over");
+  }
+});
+
+dom.playerHand.addEventListener("pointerup", (e) => {
+  const tap = Drag.pendingTap;
+  const wasDragging = Drag.active && Drag.moved;
+  const card = Drag.card;
+  const el = Drag.el;
+  dragCleanup();
+  Drag.pendingTap = null;
+
+  if (wasDragging && card && el) {
+    el.style.transform = "";
+    if (discardHitTest(e.clientX, e.clientY)) {
+      // drop on the discard pile → play it
+      if (card.color === "wild") {
+        state.pendingCard = card;
+        state.pendingRect = rectOf(el);
+        Ring.hide();
+        dom.colorOverlay.classList.add("show");
+      } else {
+        commitPlay(card, card.color, rectOf(el));
+      }
+    }
+    return;
+  }
+
+  // tap (no drag): play the card
+  if (tap && tap.can && tap.el === el && card) {
+    onCardClick(card, el);
+  } else if (tap && !tap.can && card) {
+    onCardClick(card, el); // shows "doesn't match" feedback
+  }
+});
+
+dom.playerHand.addEventListener("pointercancel", () => {
+  dragCleanup();
+  Drag.pendingTap = null;
 });
 
 dom.drawPile.addEventListener("click", async () => {
@@ -1236,6 +1384,9 @@ function setPill(text, cls) {
   dom.dbPillHome.textContent = "● " + text;
   dom.dbPillHome.className = "db-pill " + (cls || "");
 }
+
+// expose FX helper for room.js multiplayer announcements
+window.Game = { playSpecialFX };
 
 // ---------- boot ----------
 (async function boot() {

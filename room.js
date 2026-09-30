@@ -261,25 +261,28 @@
     g.players.forEach((p, seat) => {
       if (seat === youSeatIdx) return;
       const row = document.createElement("div");
-      row.className = "seat" + (g.current === seat ? " active-turn" : "");
+      row.className = "seat" + (g.current === seat ? " active-turn" : ""); // turn blink via turnGlow
       row.innerHTML =
         '<div class="seat-ring"><svg viewBox="0 0 72 72">' +
         '<circle class="ring-track" cx="36" cy="36" r="32" pathLength="100"/>' +
-        '<circle class="ring-fill" cx="36" cy="36" r="32" pathLength="100"' +
-        (g.current === seat ? ' style="stroke-dashoffset:100"' : "") + "/></svg>" +
+        '<circle class="ring-fill" cx="36" cy="36" r="32" pathLength="100"/></svg>' +
         '<div class="avatar ' + (p.isBot ? "cpu" : "other") + '">' + p.username.slice(0, 3).toUpperCase() + "</div></div>" +
         '<div class="seat-info"><div class="seat-name">' + p.username + "</div>" +
         '<div class="seat-cards"><b>' + p.handCount + "</b> cards</div></div>";
       oppZone.appendChild(row);
     });
 
-    // discard
+    // discard + active color ring
     const dp = $("mpDiscardPile");
     dp.innerHTML = "";
+    const mpRing = $("mpColorRing");
     if (g.discardTop) {
       const el = renderCard(g.discardTop);
       el.style.setProperty("--tilt", "3deg");
       dp.appendChild(el);
+      if (mpRing) mpRing.className = "color-ring show " + g.activeColor;
+    } else if (mpRing) {
+      mpRing.className = "color-ring";
     }
 
     // your hand
@@ -304,6 +307,13 @@
       const name = g.players[a.seat] ? g.players[a.seat].username : "?";
       if (a.type === "play") {
         announce(name + " played " + (a.card ? a.card.value : "a card"), a.seat === youSeatIdx ? "good" : "");
+        if (window.Game && window.Game.playSpecialFX && a.card) {
+          const v = a.card.value;
+          if (v === "draw2") window.Game.playSpecialFX("d2", name + " plays +2");
+          else if (v === "wild4") window.Game.playSpecialFX("w4", name + " plays +4");
+          else if (v === "skip" || v === "reverse") window.Game.playSpecialFX("skip", name + " plays " + (v === "skip" ? "Skip" : "Reverse"));
+          else if (v === "wild") window.Game.playSpecialFX("wild", name + " plays Wild");
+        }
       } else if (a.type === "draw") {
         announce(name + " drew a card", a.seat === youSeatIdx ? "" : "bad");
       } else if (a.type === "pass") {
