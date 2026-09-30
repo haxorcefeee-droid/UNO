@@ -664,7 +664,16 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .seat.active-turn {
   border-color: rgba(255, 216, 77, 0.9);
   animation: turnGlow 1.1s ease-in-out infinite;
+  transform: scale(1.14); /* active player grows: bigger ring, smaller relative chip */
+  z-index: 5;
 }
+
+.seat.active-turn .seat-ring,
+.seat.active-turn .seat-ring svg { width: 66px; height: 66px; }
+
+.seat.active-turn .seat-name { font-size: 0.85rem; max-width: 30vw; }
+
+.seat.active-turn .seat-cards { font-size: 0.6rem; opacity: 0.85; }
 
 @keyframes turnGlow {
   0%, 100% { box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.15); transform: scale(1); }
@@ -1279,10 +1288,12 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   width: var(--card-w);
   height: var(--card-h);
   border-radius: 12px;
-  background: linear-gradient(160deg, #ffffff, #eef2f6);
+  /* premium colored card body: white core melts into the card's color */
+  background: linear-gradient(165deg, #ffffff 0%, #f4f7fa 34%, var(--card-tint, #dfe6ee) 100%);
   padding: 4px;
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.65) inset,
+    0 1px 3px rgba(0, 0, 0, 0.18),
     0 10px 24px rgba(0, 0, 0, 0.42);
   display: grid;
   place-items: center;
@@ -1291,6 +1302,23 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   overflow: hidden;
   touch-action: none; /* required for pointer-drag */
   transform-style: preserve-3d;
+}
+
+/* colored rim: each suit tints its card edge + face tint */
+.card.red { --card-tint: #ffd3d0; box-shadow: 0 2px 0 rgba(255,255,255,.65) inset, 0 0 0 2px rgba(227,59,59,.55), 0 10px 24px rgba(0,0,0,.42); }
+.card.yellow { --card-tint: #ffefb8; box-shadow: 0 2px 0 rgba(255,255,255,.65) inset, 0 0 0 2px rgba(244,197,49,.6), 0 10px 24px rgba(0,0,0,.42); }
+.card.green { --card-tint: #d2f2d9; box-shadow: 0 2px 0 rgba(255,255,255,.65) inset, 0 0 0 2px rgba(58,165,84,.55), 0 10px 24px rgba(0,0,0,.42); }
+.card.blue { --card-tint: #d3e5ff; box-shadow: 0 2px 0 rgba(255,255,255,.65) inset, 0 0 0 2px rgba(47,111,208,.55), 0 10px 24px rgba(0,0,0,.42); }
+.card.wild { --card-tint: #e6ddff; box-shadow: 0 2px 0 rgba(255,255,255,.65) inset, 0 0 0 2px rgba(150,80,255,.5), 0 10px 24px rgba(0,0,0,.42); }
+
+.card.wild .inner {
+  background:
+    conic-gradient(var(--red) 0 90deg, var(--yellow) 90deg 180deg, var(--green) 180deg 270deg, var(--blue) 270deg 360deg);
+}
+
+.card.wild .inner::before {
+  background: radial-gradient(ellipse 50% 42% at 50% 50%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.55) 60%, transparent 100%);
+  clip-path: none;
 }
 
 .card .inner {
@@ -1341,7 +1369,41 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .card.back { padding: 0; }
 
-.card.back .inner { inset: 0; border-radius: 12px; }
+/* premium card BACK: navy shell, gold filigree ring, glossy sheen */
+.card.back .inner {
+  inset: 0;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse 40% 30% at 50% 32%, rgba(255, 216, 77, 0.35), transparent 70%),
+    linear-gradient(160deg, #123a5c 0%, #0a2540 55%, #071a2d 100%);
+  border: 2px solid rgba(255, 216, 77, 0.45);
+}
+
+.card.back .inner::after {
+  content: "UNO";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  font-size: calc(var(--card-w) * 0.24);
+  color: #ffd84d;
+  text-shadow: 0 2px 0 #8a5a00, 0 0 14px rgba(255, 216, 77, 0.45);
+}
+
+.card.back .inner::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255, 216, 77, 0.3);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 216, 77, 0.06) 0 6px, transparent 6px 12px);
+}
+
+.card.back .val { display: none; }
 
 .card.back .inner::before { display: none; }
 
@@ -1435,19 +1497,30 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .card.flip3d.still .card-flip { transition: none; }
 
-/* SNEAK badge on opponent seats */
+/* SNEAK toggle on opponent seats (button now, not a label) */
 .sneak-badge {
   margin-left: 0.35rem;
-  font-size: 0.42rem;
+  font-family: var(--font);
+  font-size: 0.46rem;
   font-weight: 900;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   color: #ffd84d;
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 216, 77, 0.45);
   border-radius: 999px;
-  padding: 1px 6px;
+  padding: 3px 7px;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
 }
+
+.sneak-badge:hover { background: rgba(255, 216, 77, 0.2); transform: scale(1.05); }
+
+.sneak-badge:active { transform: scale(0.94); }
+
+.seat.peek { border-color: rgba(255, 216, 77, 0.75); box-shadow: 0 0 0 2px rgba(255, 216, 77, 0.25); }
+
+.seat.peek .sneak-badge { color: #0a2540; background: #ffd84d; }
 
 /* sneak mode: opponent cards render face-up at mini size */
 .opponent-hand.sneaking .card {

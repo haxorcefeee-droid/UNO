@@ -292,9 +292,33 @@ export async function handleApi(req, res, url) {
       if (parts[2] === "leave" && req.method === "POST") {
         const room = await findRoomById(Number(body.roomId || parts[3]));
         if (!room) return json(404, { error: "Room not found" });
+
+        // leaving mid-game = forfeit: remaining player(s) win, ante settles
+        if (room.status === "playing") {
+          const game = room.game_state && room.game_state.deck ? room.game_state : null;
+          const leaverSeat = game
+            ? game.players.findIndex((p) => p.userId === user.id)
+            : -1;
+          if (game && game.winner === null && leaverSeat >= 0) {
+            game.players.splice(leaverSeat, 1);
+            if (game.players.length === 1) {
+              game.winner = 0; // last player standing
+              game.current = 0;
+            } else if (game.current >= game.players.length) {
+              game.current = 0;
+            }
+            if (game.winner !== null) {
+              await settleRound(room, game);
+              await saveGameState(room.id, game);
+              await bumpRoom(room.id, { status: "finished" });
+            }
+          }
+        }
+
         await leaveRoom(room.id, user.id);
         const players = await roomPlayers(room.id);
         if (players.length === 0) {
+          // empty room: clean up finished rooms immediately, keep others brief
           await deleteRoom(room.id);
         } else if (room.host_id === user.id && room.status !== "playing") {
           await bumpRoom(room.id, { host_id: players[0].id });
@@ -336,6 +360,16 @@ export async function handleApi(req, res, url) {
         const code = String(parts[3] || url.searchParams.get("code") || "").toUpperCase();
         const room = await findRoomByCode(code);
         if (!room) return json(404, { error: "Room not found" });
+        // finished + only bots left → sweep the room (players already out)
+        if (room.status === "finished") {
+          const leftover = await roomPlayers(room.id);
+          const humans = leftover.filter((p) => !p.username.startsWith("BOT_"));
+          if (humans.length === 0) {
+            await deleteRoom(room.id);
+            const fresh = await findRoomByCode(code);
+            if (!fresh) return json(404, { error: "Room not found" });
+          }
+        }
         const players = await roomPlayers(room.id);
         const seat = players.find((p) => p.id === user.id)?.seat ?? -1;
         const game = room.game_state && room.game_state.deck ? room.game_state : null;
