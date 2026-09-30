@@ -265,7 +265,7 @@ export async function handleApi(req, res, url) {
           if (!(await findRoomByCode(code))) break;
           code = roomCode();
         }
-        const room = await createRoom({ code, hostId: user.id, ante, isPublic });
+        const room = await createRoom({ code, hostId: user.id, ante, isPublic, maxPlayers });
         await joinRoomPlayer(room.id, user.id, 0);
         return json(201, { room: { ...room, hostName: user.username } });
       }

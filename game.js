@@ -583,6 +583,15 @@ function flyGhost(el, from, to, opts) {
 }
 
 // ---------- seat turn timer (radar rings around each avatar) ----------
+// UNO! moment: big popup + screen pulse when it's time to call UNO
+function unoMoment() {
+  if (reducedMotion()) return;
+  document.body.classList.remove("uno-pulse");
+  void document.body.offsetWidth; // restart the animation
+  document.body.classList.add("uno-pulse");
+  setTimeout(() => document.body.classList.remove("uno-pulse"), 1400);
+}
+
 function flipCardIn(el) {
   if (!el || reducedMotion()) return;
   el.classList.remove("still"); // re-enable the flip transition
@@ -797,6 +806,7 @@ async function startRound() {
 
   state.busy = false;
   setRing(dom.colorRing, state.activeColor);
+  setTableRing(state.activeColor);
   announce("Round " + state.round + " — your move", "good");
   Ring.start("you");
   Sound.turn();
@@ -867,8 +877,9 @@ async function playCard(who, card, chosenColor, fromRect) {
   const keepsTurn = applySpecial(who, card);
   renderAll();
 
-  // active-color ring around the discard pile
+  // active-color ring around the discard pile + around the whole table
   setRing(dom.colorRing, state.activeColor);
+  setTableRing(state.activeColor);
 
   // physical flight: from the seat (you) or the opponent hand (cpu) to the discard
   const to = (() => {
@@ -924,6 +935,16 @@ function settleTopCard() {
 function setRing(ringEl, color) {
   if (!ringEl) return;
   ringEl.className = "color-ring show " + color;
+}
+
+// animated color running around the WHOLE table edge (the color to match)
+function setTableRing(color) {
+  const table = dom.discardPile && dom.discardPile.closest(".table");
+  if (!table) return;
+  table.classList.remove("table-ring", "red", "yellow", "green", "blue");
+  if (color) {
+    table.classList.add("table-ring", color);
+  }
 }
 
 // full-screen special-card FX
@@ -1046,6 +1067,7 @@ function commitPlay(card, chosenColor, fromRect) {
   if (willBeOne && !state.over) {
     state.awaitingUno = true;
     toast("One card left — press UNO!", "good");
+    unoMoment(); // popup + screen pulse: call UNO now!
   }
 }
 
@@ -1185,6 +1207,11 @@ dom.unoBtn.addEventListener("click", () => {
     toast("UNO!", "good");
     announce("UNO!", "good");
     Sound.uno();
+    if (!reducedMotion()) {
+      dom.unoBtn.classList.remove("uno-shout");
+      void dom.unoBtn.offsetWidth;
+      dom.unoBtn.classList.add("uno-shout");
+    }
   }
 });
 
@@ -1489,6 +1516,8 @@ window.Game = {
   flipCardIn,
   make3D: face3D,
   fitHand,
+  unoMoment,
+  setTableRing,
 };
 
 // ---------- boot ----------
