@@ -121,6 +121,39 @@ export async function ensureSchema() {
       UNIQUE (room_id, seat)
     )
   `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS room_chat (
+      id         SERIAL PRIMARY KEY,
+      room_id    INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      username   TEXT    NOT NULL,
+      body       TEXT    NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+}
+
+// ---------- room chat ----------
+export async function sendChat(roomId, username, body) {
+  const sql = getSql();
+  const [row] = await sql`
+    INSERT INTO room_chat (room_id, username, body)
+    VALUES (${roomId}, ${username}, ${body})
+    RETURNING id, username, body, created_at AS "at"
+  `;
+  return row;
+}
+
+export async function getChat(roomId, limit = 30) {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, username, body, created_at AS "at"
+    FROM room_chat
+    WHERE room_id = ${roomId}
+    ORDER BY id DESC
+    LIMIT ${limit}
+  `;
+  return rows.reverse();
 }
 
 // run schema setup at most once per serverless instance

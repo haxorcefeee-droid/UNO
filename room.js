@@ -21,9 +21,13 @@
     sneak: false, // server-granted SNEAK ability (special username only)
     timerEnd: 0, // deadline for the local player's turn clock
     timerLoop: null, // 200ms UI loop handle for smooth seat rings
+    graceUntil: 0, // timestamp until which the countdown is paused
     roomStatus: "", // last seen room status (lobby/playing/finished)
     wins: {}, // username -> wins inside THIS room
     victoryShown: false, // prevent double victory overlay
+    chatOpen: false, // chat panel visibility
+    chatLastId: 0, // newest seen chat message id
+    chatUnread: 0, // unread count while panel is closed
   };
 
   // special username with the SNEAK ability (server re-verifies every request)
@@ -208,6 +212,10 @@
     // fresh room → fresh tally (per-room win counts)
     if (!R.room || R.room.code !== room.code) { R.wins = {}; }
     R.room = room;
+    R.chatLastId = 0;
+    R.chatUnread = 0;
+    const log = $("chatLog");
+    if (log) log.innerHTML = '<div class="chat-empty">Say hi to your table 👋</div>';
     $("home").classList.remove("active");
     $("rooms").classList.remove("active");
     $("roomScreen").classList.add("active");
@@ -275,6 +283,7 @@
         if (data.room.status === "playing") hideVictory();
         renderGame(data, prev);
       }
+      refreshChat();
     } catch (err) {
       // room may have been deleted
       if (String(err.message).includes("not found")) {
@@ -357,11 +366,13 @@
     // dealer flourish when a round just started
     if (!prev && g && g.winner == null) dealerShow();
 
-    // turn clock: reset the deadline whenever whose turn it is changes
+    // turn clock: reset on turn change; grace-pause after any play so the
+    // bottom feed can be read before the countdown resumes
     const turnKey = g.current + ":" + (g.lastAction ? g.lastAction.at : 0);
     if (R.lastTurnKey !== turnKey) {
       R.lastTurnKey = turnKey;
-      R.timerEnd = g.winner == null ? Date.now() + TURN_MS : 0;
+      R.timerEnd = g.winner == null ? Date.now() + PLAY_GRACE_MS + TURN_MS : 0;
+      R.graceUntil = Date.now() + PLAY_GRACE_MS; // clock holds during the feed
     }
     tickTimer(g, youSeatIdx, myTurn);
     setTableRing(g.activeColor);
@@ -583,6 +594,65 @@
     return value || "card";
   }
 
+  // ---------- room chat ----------
+  function chatAppend(msg) {
+    const log = $("chatLog");
+    if (!log || !msg) return;
+    const empty = log.querySelector(".chat-empty");
+    if (empty) empty.remove();
+    const row = document.createElement("div");
+    row.className = "chat-msg" + (msg.username === (R.you && R.you.username) ? " mine" : "");
+    const who = document.createElement("span");
+    who.className = "chat-who";
+    who.textContent = msg.username;
+    const body = document.createElement("span");
+    body.className = "chat-body";
+    body.textContent = msg.body; // textContent: never inject raw HTML
+    row.appendChild(who);
+    row.appendChild(body);
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function refreshChat() {
+    if (!R.room) return;
+    try {
+      const data = await api("rooms/chat?code=" + encodeURIComponent(R.room.code));
+      const msgs = data.msgs || [];
+      const fresh = msgs.filter((m) => m.id > R.chatLastId);
+      if (!fresh.length) return;
+      fresh.forEach(chatAppend);
+      R.chatLastId = fresh[fresh.length - 1].id;
+      if (!R.chatOpen) {
+        const mine = fresh.every((m) => m.username === (R.you && R.you.username));
+        if (!mine) {
+          R.chatUnread += fresh.length;
+          const badge = $("chatUnread");
+          if (badge) {
+            badge.textContent = R.chatUnread > 9 ? "9+" : R.chatUnread;
+            badge.hidden = false;
+          }
+        }
+      }
+    } catch (e) { /* chat is best-effort; the room banner shows real errors */ }
+  }
+
+  function setChatOpen(open) {
+    R.chatOpen = open;
+    const panel = $("chatPanel");
+    const badge = $("chatUnread");
+    if (panel) {
+      panel.hidden = !open;
+      if (open) {
+        R.chatUnread = 0;
+        if (badge) badge.hidden = true;
+        refreshChat();
+        const input = $("chatInput");
+        if (input) input.focus();
+      }
+    }
+  }
+
   // per-room win tally (resets when you enter a different room)
   function countWin(username) {
     R.wins[username] = (R.wins[username] || 0) + 1;
@@ -678,9 +748,17 @@
 
   // REAL turn timer: counts down around WHOEVER is playing (not just you),
   // radar sweep on the active seat, auto draw+pass on your own expiry.
+  // After ANY play, the countdown pauses for a few seconds (grace) so the
+  // play feed can be read before the clock resumes.
   const TURN_MS = 30000;
+  const PLAY_GRACE_MS = 4000;
   function turnFrac() {
     if (!R.timerEnd) return 1;
+    // while the grace pause is active, hold the clock: shift the deadline
+    // forward every tick so the remaining time doesn't decrease
+    if (R.graceUntil && Date.now() < R.graceUntil) {
+      R.timerEnd += 200; // matches the UI loop tick
+    }
     return Math.max(0, Math.min(1, (R.timerEnd - Date.now()) / TURN_MS));
   }
 
@@ -710,8 +788,10 @@
       return;
     }
     if (!R.timerEnd) R.timerEnd = Date.now() + TURN_MS;
+    const frozen = R.graceUntil && Date.now() < R.graceUntil;
     applyTurnRing(ring, secsEl, seat, myTurn, true);
-    if (myTurn && R.timerEnd - Date.now() <= 0 && !R.busy) {
+    // expiry can't fire during the grace pause
+    if (myTurn && !frozen && R.timerEnd - Date.now() <= 0 && !R.busy) {
       R.timerEnd = 0;
       stopTurnTimer();
       toast("Time's up — drawing a card", "bad");
@@ -832,6 +912,23 @@
         showError("Start failed: " + (err.message || "unknown error"));
       }
     });
+    // chat events
+    $("chatFab").addEventListener("click", () => setChatOpen(!R.chatOpen));
+    $("chatClose").addEventListener("click", () => setChatOpen(false));
+    $("chatForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = $("chatInput");
+      const text = input.value.trim();
+      if (!text || !R.room) return;
+      input.value = "";
+      try {
+        await api("rooms/chat", { method: "POST", body: { code: R.room.code, body: text } });
+        refreshChat();
+      } catch (err) {
+        toast(err.message, "bad");
+      }
+    });
+
     $("mpDrawPile").addEventListener("click", () => {
       const before = countMyHand();
       if (window.Game && window.Game.tossDealer) window.Game.tossDealer($("mpDealer"));
