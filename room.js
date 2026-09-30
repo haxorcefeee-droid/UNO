@@ -193,6 +193,7 @@
       enterRoom(data.room);
     } catch (err) {
       $("roomsMsg").textContent = err.message;
+      showError(err.message);
     }
   }
 
@@ -215,6 +216,21 @@
     startPolling();
   }
 
+  // ---------- visible errors (no more silent failures) ----------
+  function showError(msg) {
+    const el = $("roomError");
+    if (!el) return;
+    el.textContent = "⚠ " + msg;
+    el.hidden = false;
+    clearTimeout(showError._t);
+    showError._t = setTimeout(() => { el.hidden = true; }, 6000);
+  }
+
+  function hideError() {
+    const el = $("roomError");
+    if (el) el.hidden = true;
+  }
+
   // ---------- room polling ----------
   function startPolling() {
     stopPolling();
@@ -235,6 +251,7 @@
       R.game = data.game;
       R.you = data.you;
       R.sneak = !!data.sneak; // server grants SNEAK only to the special username
+      hideError();
 
       $("roomStatus").textContent = data.room.status;
       $("roomCoins").textContent = data.you.coins;
@@ -260,6 +277,9 @@
         stopPolling();
         R.room = null;
         leaveRoomScreen();
+      } else {
+        // show every other failure (offline DB, server error, …) on the room screen
+        showError(err.message || "Can't reach the room right now");
       }
     }
   }
@@ -287,8 +307,28 @@
 
   // ---------- live game rendering ----------
   function renderGame(data, prev) {
+    try {
+      renderGameInner(data, prev);
+    } catch (err) {
+      // never leave a blank "playing" table: show what went wrong
+      console.error("renderGame failed:", err);
+      showError("Table render problem: " + (err.message || "unknown"));
+      const ph = $("mpPlayerHand");
+      if (ph) {
+        ph.innerHTML = "";
+        const fallback = document.createElement("div");
+        fallback.className = "draw-hint";
+        fallback.textContent = "Something went wrong rendering the table — reloading…";
+        ph.appendChild(fallback);
+      }
+      // last known good state will re-render on the next poll
+    }
+  }
+
+  function renderGameInner(data, prev) {
     const g = data.game;
     const youSeatIdx = g.players.findIndex((p) => p.username === data.you.username);
+    if (youSeatIdx < 0) throw new Error("you are not seated at this table — rejoin the room");
 
     $("mpYouName").textContent = data.you.username;
     $("mpYouCount").textContent = g.players[youSeatIdx].handCount;
@@ -500,7 +540,13 @@
       const me = R.players.find((x) => x.id === R.you.id);
       await action("ready", { ready: !(me && me.ready) });
     });
-    $("startGameBtn").addEventListener("click", () => action("start", {}));
+    $("startGameBtn").addEventListener("click", async () => {
+      try {
+        await action("start", {});
+      } catch (err) {
+        showError("Start failed: " + (err.message || "unknown error"));
+      }
+    });
     $("mpDrawPile").addEventListener("click", () => {
       const before = countMyHand();
       if (window.Game && window.Game.tossDealer) window.Game.tossDealer($("mpDealer"));
