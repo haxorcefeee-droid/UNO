@@ -82,6 +82,16 @@ const A = (opts) => (hasAnime ? anime(opts) : { finished: Promise.resolve() });
 const A_DONE = (a) => Promise.resolve((a && a.finished) || Promise.resolve());
 
 // ---------- auth/wallet ----------
+async function readJson(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try { return JSON.parse(text); }
+  catch {
+    const flat = text.replace(/\s+/g, " ").trim();
+    return { error: flat.slice(0, 180) || ("HTTP " + res.status) };
+  }
+}
+
 const Auth = {
   token: localStorage.getItem("uno-table-token") || "",
   user: null,
@@ -90,7 +100,7 @@ const Auth = {
     try {
       const res = await fetch("/api/auth/me", { headers: { Authorization: "Bearer " + this.token } });
       if (!res.ok) throw new Error("expired");
-      const data = await res.json();
+      const data = await readJson(res);
       this.user = data.user;
       return this.user;
     } catch {
@@ -105,7 +115,7 @@ const Auth = {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(data.error || "Login failed");
     this.token = data.token;
     localStorage.setItem("uno-table-token", this.token);
@@ -117,7 +127,7 @@ const Auth = {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(data.error || "Register failed");
     this.token = data.token;
     localStorage.setItem("uno-table-token", this.token);

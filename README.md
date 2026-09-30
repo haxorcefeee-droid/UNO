@@ -51,7 +51,7 @@ project root (`DATABASE_URL=postgresql://...`) or export it before `npm run dev`
    connection string. Use the **pooled** URL from the Neon Connect dialog, and enable it
    for **Production**. Saving the variable does not update a deployment that already
    finished — redeploy after it is saved.
-3. Deploy. Vercel serves the static game and runs `api/[[...path]].js` for every `/api/*` call.
+3. Deploy. Vercel serves the static game and runs the files in `api/` for every `/api/*` call.
    `GET /api/health` reports whether the database connection succeeded.
 
 No other configuration needed — `vercel.json` already wires the build, output directory,
