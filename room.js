@@ -19,6 +19,7 @@
     lastTurnSeat: -1,
     busy: false,
     sneak: false, // server-granted SNEAK ability (special username only)
+    timerEnd: 0, // deadline for the local player's turn clock
   };
 
   // special username with the SNEAK ability (server re-verifies every request)
@@ -353,7 +354,13 @@
     // dealer flourish when a round just started
     if (!prev && g && g.winner == null) dealerShow();
 
-    startRadar(myTurn);
+    // turn clock: reset the deadline whenever whose turn it is changes
+    const turnKey = g.current + ":" + (g.lastAction ? g.lastAction.at : 0);
+    if (R.lastTurnKey !== turnKey) {
+      R.lastTurnKey = turnKey;
+      R.timerEnd = Date.now() + TURN_MS;
+    }
+    tickTimer(g, youSeatIdx, myTurn);
     setTableRing(g.activeColor);
 
     // opponents — updated in place (keyed by seat) so the turn glow and
@@ -379,6 +386,16 @@
       }
       row.classList.toggle("active-turn", g.current === seat);
       row.querySelector(".seat-cards b").textContent = p.handCount;
+      // SNEAK badge: marks the seats you're reading
+      let badge = row.querySelector(".sneak-badge");
+      if (R.sneak) {
+        if (!badge) {
+          badge = document.createElement("div");
+          badge.className = "sneak-badge";
+          badge.textContent = "SNEAK";
+          row.appendChild(badge);
+        }
+      } else if (badge) badge.remove();
       // SNEAK (server-gated): this viewer may see this player's real cards
       const hasSneak = R.sneak && Array.isArray(p.hand) && p.hand.length;
       let mini = row.querySelector(".sneak-hand");
@@ -403,7 +420,8 @@
       if (!g.players.some((p, s) => s !== youSeatIdx && String(s) === row.dataset.seat)) row.remove();
     });
 
-    // discard + active color ring — only touch the DOM when the top changed
+    // discard + active color ring — only touch the DOM when the top changed;
+    // the new top lands with an anime.js settle (scale pop + 3D flip-in)
     const dp = $("mpDiscardPile");
     const dpKey = g.discardTop ? g.discardTop.color + ":" + g.discardTop.value : "";
     if (dp.dataset.top !== dpKey) {
@@ -414,6 +432,16 @@
         const el = renderCard(g.discardTop, { still: true });
         el.style.setProperty("--tilt", "3deg");
         dp.appendChild(el);
+        if (window.anime && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          window.anime({
+            targets: el,
+            scale: [0.55, 1.12, 1],
+            rotateY: ["-120deg", "0deg"],
+            opacity: [0, 1],
+            duration: 620,
+            easing: "easeOutBack",
+          });
+        }
       }
     }
     const mpRing = $("mpColorRing");
@@ -469,12 +497,15 @@
       toast("One card left — hit UNO!", "good");
     }
 
-    // announce diffs
+    // announce diffs — messages land at the BOTTOM CENTER with the full card name
     if (prev && prev.lastAction && g.lastAction && prev.lastAction.at !== g.lastAction.at) {
       const a = g.lastAction;
       const name = g.players[a.seat] ? g.players[a.seat].username : "?";
       if (a.type === "play") {
-        announce(name + " played " + (a.card ? a.card.value : "a card"), a.seat === youSeatIdx ? "good" : "");
+        const c = a.card || {};
+        const cardText = colorName(c.color) + " " + valueText(c.value);
+        playNote(name + " played " + cardText, a.seat === youSeatIdx ? "good" : "");
+        announce(name + " played " + cardText, a.seat === youSeatIdx ? "good" : "");
         if (window.Game && window.Game.playSpecialFX && a.card) {
           const v = a.card.value;
           if (v === "draw2") window.Game.playSpecialFX("d2", name + " plays +2");
@@ -510,6 +541,65 @@
     const want = color ? "table table-ring " + color : "table";
     if (table.className === want) return; // don't restart the animation every poll
     table.className = want;
+  }
+
+  // human card names for the play feed
+  function colorName(color) {
+    if (color === "wild") return "Wild";
+    return color ? color.charAt(0).toUpperCase() + color.slice(1) : "";
+  }
+
+  function valueText(value) {
+    if (value === "skip") return "Skip";
+    if (value === "reverse") return "Reverse";
+    if (value === "draw2") return "Draw Two";
+    if (value === "wild4") return "Wild Draw Four";
+    return value || "card";
+  }
+
+  // bottom-center play feed: who played what, right above your name plate
+  function playNote(text, kind) {
+    const el = $("mpPlayNote");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "play-note show " + (kind || "");
+    clearTimeout(playNote._t);
+    playNote._t = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  // REAL turn timer: counts down, lights the seat ring, auto draw+pass on expiry
+  const TURN_MS = 30000;
+  function tickTimer(g, youSeatIdx, myTurn) {
+    const ring = $("mpYouRing");
+    const secsEl = $("mpYouSeconds");
+    const seat = $("mpYouSeat");
+    if (g.winner != null) {
+      if (secsEl) secsEl.hidden = true;
+      if (seat) seat.classList.remove("racing");
+      stopTurnTimer();
+      return;
+    }
+    if (!R.timerEnd) R.timerEnd = Date.now() + TURN_MS;
+    const remain = Math.max(0, R.timerEnd - Date.now());
+    const frac = remain / TURN_MS;
+    if (ring) ring.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
+    if (secsEl) {
+      secsEl.hidden = !myTurn;
+      if (myTurn) secsEl.textContent = Math.ceil(remain / 1000);
+    }
+    if (seat) seat.classList.toggle("racing", myTurn && remain < 10000);
+    if (myTurn && remain <= 0 && !R.busy) {
+      R.timerEnd = 0;
+      stopTurnTimer();
+      toast("Time's up — drawing a card", "bad");
+      action("draw", {}); // drawTurn passes the turn if the card isn't playable
+    }
+  }
+
+  function stopTurnTimer() {
+    R.timerEnd = 0;
+    const ring = $("mpYouRing");
+    if (ring) ring.style.strokeDashoffset = 0;
   }
 
   function countMyHand() {
@@ -558,6 +648,8 @@
       $("colorOverlay").classList.add("show");
       return;
     }
+    // optimistic flight: your card visibly leaves your hand toward the pile
+    if (window.Game && window.Game.flyFromEl) window.Game.flyFromEl(el, card);
     action("play", { index });
   }
 

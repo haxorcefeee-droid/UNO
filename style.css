@@ -581,7 +581,8 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   stroke-linecap: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 0;
-  transition: stroke var(--t-med);
+  /* 1.5s linear matches the poll cadence → smooth countdown between polls */
+  transition: stroke var(--t-med), stroke-dashoffset 1.5s linear;
 }
 
 .seat-ring::after {
@@ -1167,6 +1168,20 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .card.flip3d.still .card-flip { transition: none; }
 
+/* SNEAK badge on opponent seats */
+.sneak-badge {
+  margin-left: 0.35rem;
+  font-size: 0.42rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: #ffd84d;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 216, 77, 0.45);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
 /* sneak mode: opponent cards render face-up at mini size */
 .opponent-hand.sneaking .card {
   width: 46px;
@@ -1411,6 +1426,43 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .save-note { margin-top: 0.9rem; font-size: 0.76rem; font-weight: 700; color: #6b5f52; }
 .save-note.ok { color: #2f8f4e; }
 .save-note.err { color: #c22e2c; }
+
+/* ---------- bottom-center play feed ---------- */
+.play-note {
+  position: fixed;
+  bottom: calc(14px + var(--sab));
+  left: 50%;
+  transform: translate(-50%, 18px);
+  z-index: 58;
+  font-weight: 900;
+  font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+  letter-spacing: 0.04em;
+  color: #ffd84d;
+  background: rgba(8, 18, 12, 0.92);
+  border: 1px solid rgba(255, 216, 77, 0.4);
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  max-width: 92vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+}
+
+.play-note.show { opacity: 1; transform: translate(-50%, 0); }
+
+.play-note.good { border-color: rgba(122, 216, 118, 0.6); color: #7ad876; }
+
+/* seat racing state (under 10s on your clock) */
+.seat.racing {
+  border-color: rgba(255, 107, 87, 0.9);
+  animation: turnGlow 1.8s ease-in-out infinite;
+}
+
+.seat.racing .ring-fill { stroke: #ff6b57; }
 
 /* ---------- hand shake ---------- */
 @keyframes handShake {
