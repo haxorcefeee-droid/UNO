@@ -356,78 +356,108 @@
     startRadar(myTurn);
     setTableRing(g.activeColor);
 
-    // opponents (everyone except you)
+    // opponents — updated in place (keyed by seat) so the turn glow and
+    // sneak hands are not torn down and rebuilt every 1.5s poll
     const oppZone = $("mpOpponents");
-    oppZone.innerHTML = "";
+    const existing = {};
+    [...oppZone.children].forEach((row) => { existing[row.dataset.seat] = row; });
     g.players.forEach((p, seat) => {
       if (seat === youSeatIdx) return;
-      const row = document.createElement("div");
-      row.className = "seat" + (g.current === seat ? " active-turn" : ""); // turn blink via turnGlow
-      row.innerHTML =
-        '<div class="seat-ring"><svg viewBox="0 0 72 72">' +
-        '<circle class="ring-track" cx="36" cy="36" r="32" pathLength="100"/>' +
-        '<circle class="ring-fill" cx="36" cy="36" r="32" pathLength="100"/></svg>' +
-        '<div class="avatar ' + (p.isBot ? "cpu" : "other") + '">' + p.username.slice(0, 3).toUpperCase() + "</div></div>" +
-        '<div class="seat-info"><div class="seat-name">' + p.username + "</div>" +
-        '<div class="seat-cards"><b>' + p.handCount + "</b> cards</div></div>";
-      // SNEAK (server-gated): this viewer may see this player's real cards
-      if (R.sneak && Array.isArray(p.hand) && p.hand.length) {
-        const mini = document.createElement("div");
-        mini.className = "sneak-hand";
-        p.hand.forEach((c) => mini.appendChild(renderCard(c, { still: true })));
-        row.appendChild(mini);
+      let row = existing[seat];
+      if (!row) {
+        row = document.createElement("div");
+        row.dataset.seat = seat;
+        row.className = "seat";
+        row.innerHTML =
+          '<div class="seat-ring"><svg viewBox="0 0 72 72">' +
+          '<circle class="ring-track" cx="36" cy="36" r="32" pathLength="100"/>' +
+          '<circle class="ring-fill" cx="36" cy="36" r="32" pathLength="100"/></svg>' +
+          '<div class="avatar ' + (p.isBot ? "cpu" : "other") + '">' + p.username.slice(0, 3).toUpperCase() + "</div></div>" +
+          '<div class="seat-info"><div class="seat-name">' + p.username + "</div>" +
+          '<div class="seat-cards"><b>0</b> cards</div></div>';
+        oppZone.appendChild(row);
       }
-      oppZone.appendChild(row);
+      row.classList.toggle("active-turn", g.current === seat);
+      row.querySelector(".seat-cards b").textContent = p.handCount;
+      // SNEAK (server-gated): this viewer may see this player's real cards
+      const hasSneak = R.sneak && Array.isArray(p.hand) && p.hand.length;
+      let mini = row.querySelector(".sneak-hand");
+      if (hasSneak) {
+        if (!mini) {
+          mini = document.createElement("div");
+          mini.className = "sneak-hand";
+          row.appendChild(mini);
+        }
+        const key = p.hand.map((c) => c.color + c.value).join(",");
+        if (mini.dataset.hand !== key) {
+          mini.dataset.hand = key;
+          mini.innerHTML = "";
+          p.hand.forEach((c) => mini.appendChild(renderCard(c, { still: true })));
+        }
+      } else if (mini) {
+        mini.remove();
+      }
+    });
+    // remove rows for players who left
+    [...oppZone.children].forEach((row) => {
+      if (!g.players.some((p, s) => s !== youSeatIdx && String(s) === row.dataset.seat)) row.remove();
     });
 
-    // discard + active color ring
+    // discard + active color ring — only touch the DOM when the top changed
     const dp = $("mpDiscardPile");
-    dp.innerHTML = "";
+    const dpKey = g.discardTop ? g.discardTop.color + ":" + g.discardTop.value : "";
+    if (dp.dataset.top !== dpKey) {
+      dp.dataset.top = dpKey;
+      const old = dp.querySelector(".card");
+      if (old) old.remove();
+      if (g.discardTop) {
+        const el = renderCard(g.discardTop, { still: true });
+        el.style.setProperty("--tilt", "3deg");
+        dp.appendChild(el);
+      }
+    }
     const mpRing = $("mpColorRing");
-    if (g.discardTop) {
-      const el = renderCard(g.discardTop, { still: true }); // no re-flip on every poll
-      el.style.setProperty("--tilt", "3deg");
-      dp.appendChild(el);
-      if (mpRing) mpRing.className = "color-ring show " + g.activeColor;
-    } else if (mpRing) {
-      mpRing.className = "color-ring";
+    if (mpRing) {
+      const ringCls = g.discardTop ? "color-ring show " + g.activeColor : "color-ring";
+      if (mpRing.className !== ringCls) mpRing.className = ringCls;
     }
 
     // flight: when a remote player plays a card, fly a ghost from their seat to the pile
     if (prev && prev.lastAction && g.lastAction &&
         prev.lastAction.at !== g.lastAction.at &&
         g.lastAction.type === "play" && g.lastAction.seat !== youSeatIdx) {
-      // find the opponent row (in the opponents zone) matching the acting seat
-      let actingIdx = -1;
-      let seen = 0;
-      g.players.forEach((p, seat) => {
-        if (seat === youSeatIdx) return;
-        if (seat === g.lastAction.seat) actingIdx = seen;
-        seen++;
-      });
-      const seatRows = oppZone.children;
-      if (actingIdx >= 0 && seatRows[actingIdx] && window.Game && window.Game.flyCardToDiscard) {
+      const row = oppZone.querySelector('[data-seat="' + g.lastAction.seat + '"]');
+      if (row && window.Game && window.Game.flyCardToDiscard) {
         if (window.Game.tossDealer) window.Game.tossDealer($("mpDealer")); // dealer tossed it
-        window.Game.flyCardToDiscard(seatRows[actingIdx], 3);
+        window.Game.flyCardToDiscard(row, 3);
       }
     }
 
-    // your hand
+    // your hand — updated INCREMENTALLY so the 1.5s poll never resets
+    // running animations (flips, glows). Rebuild only when cards were played.
     const ph = $("mpPlayerHand");
     const hand = (g.players[youSeatIdx] && g.players[youSeatIdx].hand) || [];
     const prevHand = (prev && prev.players && prev.players[youSeatIdx] && prev.players[youSeatIdx].hand) || [];
     const grew = hand.length > prevHand.length;
-    ph.innerHTML = "";
-    (hand || []).forEach((card, i) => {
+
+    if (hand.length < ph.children.length || ph.querySelector(".draw-hint")) {
+      // a card was played (or a render-error note is present): rebuild face-up,
+      // no flips (the flight + FX carry the moment)
+      ph.innerHTML = "";
+    }
+    hand.forEach((card, i) => {
       const can = myTurn && playable(card, g);
-      const isNew = grew && i === hand.length - 1;
-      const el = renderCard(card, { playable: can, locked: myTurn && !can, still: !isNew });
-      el.style.setProperty("--fan-rot", ((i - (hand.length - 1) / 2) * Math.min(5, 40 / Math.max(hand.length, 1))) + "deg");
-      el.style.setProperty("--fan-y", Math.abs(i - (hand.length - 1) / 2) * 4 + "px");
-      if (can) {
+      let el = ph.children[i];
+      if (!el) {
+        const isNew = grew && i === hand.length - 1;
+        el = renderCard(card, { playable: false, locked: false, still: !isNew });
+        el.style.setProperty("--fan-rot", ((i - (hand.length - 1) / 2) * Math.min(5, 40 / Math.max(hand.length, 1))) + "deg");
+        el.style.setProperty("--fan-y", Math.abs(i - (hand.length - 1) / 2) * 4 + "px");
         el.addEventListener("click", () => playCardClick(i, el));
+        ph.appendChild(el);
       }
-      ph.appendChild(el);
+      el.classList.toggle("playable", can);
+      el.classList.toggle("locked", myTurn && !can);
     });
     const wasUnoTime = $("mpUnoBtn").disabled === false;
     $("mpUnoBtn").disabled = !(hand && hand.length === 1 && myTurn);
@@ -522,6 +552,7 @@
     const hand = g.players[youSeatIdx].hand || [];
     const card = hand[index];
     if (!card) return;
+    if (window.Game && window.Game.tossDealer) window.Game.tossDealer($("mpDealer")); // dealer throws your card
     if (card.color === "wild") {
       pendingWild = { index, el };
       $("colorOverlay").classList.add("show");
