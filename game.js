@@ -84,6 +84,16 @@ const A = (opts) => (hasAnime ? anime(opts) : { finished: Promise.resolve() });
 const A_DONE = (a) => Promise.resolve((a && a.finished) || Promise.resolve());
 
 // ---------- auth/wallet ----------
+async function readJson(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try { return JSON.parse(text); }
+  catch {
+    const flat = text.replace(/\s+/g, " ").trim();
+    return { error: flat.slice(0, 180) || ("HTTP " + res.status) };
+  }
+}
+
 const Auth = {
   token: localStorage.getItem("uno-table-token") || "",
   user: null,
@@ -92,7 +102,7 @@ const Auth = {
     try {
       const res = await fetch("/api/auth/me", { headers: { Authorization: "Bearer " + this.token } });
       if (!res.ok) throw new Error("expired");
-      const data = await res.json();
+      const data = await readJson(res);
       this.user = data.user;
       return this.user;
     } catch {
@@ -107,7 +117,7 @@ const Auth = {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(data.error || "Login failed");
     this.token = data.token;
     localStorage.setItem("uno-table-token", this.token);
@@ -119,7 +129,7 @@ const Auth = {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-    const data = await res.json();
+    const data = await readJson(res);
     if (!res.ok) throw new Error(data.error || "Register failed");
     this.token = data.token;
     localStorage.setItem("uno-table-token", this.token);
@@ -1182,12 +1192,12 @@ async function endRound(winner) {
     coinEl.hidden = true;
   }
 
-  saveScore().then((ok) => {
+  saveScore().then((result) => {
     dom.saveNote.hidden = false;
-    dom.saveNote.textContent = ok
+    dom.saveNote.textContent = result.ok
       ? "✓ Result saved to Neon database"
-      : "⚠ Database offline — score not saved";
-    dom.saveNote.className = "save-note " + (ok ? "ok" : "err");
+      : "⚠ " + (result.error || "Database offline — score not saved");
+    dom.saveNote.className = "save-note " + (result.ok ? "ok" : "err");
   });
 }
 
@@ -1202,11 +1212,12 @@ async function saveScore() {
         rounds: state.round,
       }),
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return true;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+    return { ok: true };
   } catch (err) {
     console.error("Save failed:", err);
-    return false;
+    return { ok: false, error: err.message };
   }
 }
 
@@ -1323,26 +1334,33 @@ if (openRoomsBtn) {
   });
 }
 
-dom.quitBtn.addEventListener("click", showHome);
-dom.rulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.add("show"));
-dom.closeRulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.remove("show"));
-dom.rulesOverlay.addEventListener("click", (e) => {
-  if (e.target === dom.rulesOverlay) dom.rulesOverlay.classList.remove("show");
-});
+if (dom.quitBtn) dom.quitBtn.addEventListener("click", showHome);
+if (dom.rulesBtn && dom.rulesOverlay) {
+  dom.rulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.add("show"));
+}
+if (dom.closeRulesBtn && dom.rulesOverlay) {
+  dom.closeRulesBtn.addEventListener("click", () => dom.rulesOverlay.classList.remove("show"));
+  dom.rulesOverlay.addEventListener("click", (e) => {
+    if (e.target === dom.rulesOverlay) dom.rulesOverlay.classList.remove("show");
+  });
+}
 
 // ---------- leaderboard ----------
 async function loadLeaderboard() {
   setPill("connecting", "");
   try {
     const res = await fetch("/api/scores?limit=8");
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
     renderLeaderboard(data.scores || []);
     setPill("neon live", "ok");
   } catch (err) {
     console.error(err);
-    dom.homeLeaderboard.innerHTML =
-      '<li class="empty">Leaderboard unavailable — database offline</li>';
+    dom.homeLeaderboard.innerHTML = "";
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = err.message || "Leaderboard unavailable — database offline";
+    dom.homeLeaderboard.appendChild(li);
     setPill("offline", "err");
   }
 }

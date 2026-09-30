@@ -240,7 +240,8 @@ input:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.
   margin-bottom: 0.3rem;
 }
 
-.tagline { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.3rem; }
+.tagline { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.8rem; }
+#rulesBtn { margin-bottom: 1.4rem; }
 
 .home-card {
   background: var(--panel);

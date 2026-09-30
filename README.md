@@ -41,14 +41,18 @@ npm run dev          # serves the game + API on :3000
 ```
 
 Set `DATABASE_URL` (Neon connection string) for accounts/rooms/coins/leaderboard — without
-it the game still works in vs-bot mode with a local name.
+it the game still works in vs-bot mode with a local name. Put it in a `.env` file in the
+project root (`DATABASE_URL=postgresql://...`) or export it before `npm run dev`.
 
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and import it in Vercel (framework preset: **Other**).
-2. Add the environment variable `DATABASE_URL` with your Neon connection string
-   (use the **pooled** connection string; Neon serverless driver goes over HTTPS).
-3. Deploy. Vercel serves the static game and runs `api/index.js` for every `/api/*` call.
+2. Add the environment variable **`DATABASE_URL`** (that exact name) with your Neon
+   connection string. Use the **pooled** URL from the Neon Connect dialog, and enable it
+   for **Production**. Saving the variable does not update a deployment that already
+   finished — redeploy after it is saved.
+3. Deploy. Vercel serves the static game and runs the files in `api/` for every `/api/*` call.
+   `GET /api/health` reports whether the database connection succeeded.
 
 No other configuration needed — `vercel.json` already wires the build, output directory,
 API rewrites and caching.

@@ -1,11 +1,34 @@
 import http from "node:http";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-import { ensureSchemaOnce } from "./db.js";
+import { ensureSchemaOnce, publicDbError } from "./db.js";
 import { handleApi } from "./api-core.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Local only. Vercel injects env vars itself; .env is gitignored.
+function loadDotEnv(file) {
+  if (!existsSync(file)) return;
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    if (process.env[key] !== undefined) continue;
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+loadDotEnv(path.join(__dirname, ".env"));
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = "0.0.0.0";
 
@@ -67,7 +90,6 @@ server.listen(PORT, HOST, async () => {
     await ensureSchemaOnce();
     console.log("Neon database schema ready");
   } catch (err) {
-    console.error("Neon schema setup failed:", err.message);
-    console.error("Set DATABASE_URL (Neon connection string) and restart.");
+    console.error("Neon schema setup failed:", publicDbError(err));
   }
 });
