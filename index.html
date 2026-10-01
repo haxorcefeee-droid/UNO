@@ -27,7 +27,7 @@
       </div>
       <h1 class="brand"><span class="brand-cards" aria-hidden="true"><i class="bc red">7</i><i class="bc blue">3</i><i class="bc yellow">2</i><i class="bc green">8</i></span>UNO</h1>
       <p class="tagline">The classic card game — premium table, real opponents</p>
-      <button id="rulesBtn" class="btn btn-ghost" type="button">HOW TO PLAY</button>
+      <button id="rulesBtn" class="btn btn-ghost" type="button" aria-label="How to play" title="How to play">📖</button>
 
       <div class="home-card">
         <div id="authArea">
@@ -35,8 +35,8 @@
           <input id="playerName" maxlength="16" placeholder="Pick a name…" autocomplete="off" />
           <input id="playerPass" type="password" maxlength="64" placeholder="Password (4+ chars)" autocomplete="off" />
           <div class="auth-row">
-            <button id="loginBtn" class="btn btn-ghost">SIGN IN</button>
-            <button id="registerBtn" class="btn btn-primary">CREATE ACCOUNT</button>
+            <button id="loginBtn" class="btn btn-ghost" aria-label="Sign in" title="Sign in">🔑</button>
+            <button id="registerBtn" class="btn btn-primary" aria-label="Create account" title="Create account">🆕</button>
           </div>
           <p class="hint" id="authMsg">Accounts keep your coins and leaderboard place.</p>
         </div>
@@ -49,12 +49,12 @@
             <span>W <b id="userWins">0</b></span>
             <span>L <b id="userLosses">0</b></span>
           </div>
-          <button id="playCpuBtn" class="btn btn-hero">⚡ QUICK MATCH</button>
+          <button id="playCpuBtn" class="btn btn-hero" aria-label="Quick match" title="Quick match">⚡</button>
           <div class="cta-row">
-            <button id="openRoomsBtn" class="btn btn-secondary cta-half">🏠 CREATE ROOM</button>
-            <button id="joinRoomNavBtn" class="btn btn-secondary cta-half">👥 JOIN ROOM</button>
+            <button id="openRoomsBtn" class="btn btn-secondary cta-half" aria-label="Create room" title="Create room">🏠</button>
+            <button id="joinRoomNavBtn" class="btn btn-secondary cta-half" aria-label="Join room" title="Join room">👥</button>
           </div>
-          <button id="logoutBtn" class="btn btn-ghost btn-quiet">SIGN OUT</button>
+          <button id="logoutBtn" class="btn btn-ghost btn-quiet" aria-label="Sign out" title="Sign out">🚪</button>
         </div>
       </div>
 
@@ -70,7 +70,7 @@
     <div class="home-inner">
       <div class="rooms-head">
         <h2 class="section-title">🎴 Multiplayer Rooms</h2>
-        <button id="roomsBackBtn" class="btn btn-ghost">⟵ Back</button>
+        <button id="roomsBackBtn" class="btn btn-ghost" aria-label="Back" title="Back">🔙</button>
       </div>
 
       <div class="home-card">
@@ -89,11 +89,11 @@
               </select>
             </div>
           </div>
-          <button id="createRoomBtn" class="btn btn-primary">CREATE ROOM</button>
+          <button id="createRoomBtn" class="btn btn-primary" aria-label="Create room" title="Create room">🏠</button>
         </div>
         <div class="join-room">
           <input id="joinCode" maxlength="5" placeholder="CODE" class="code-input" />
-          <button id="joinRoomBtn" class="btn btn-primary">JOIN</button>
+          <button id="joinRoomBtn" class="btn btn-primary" aria-label="Join" title="Join">👥</button>
         </div>
         <p class="hint" id="roomsMsg"></p>
       </div>
@@ -108,7 +108,7 @@
   <!-- ===== ROOM (waiting + playing) ===== -->
   <section id="roomScreen" class="screen">
     <header class="topbar">
-      <button id="leaveRoomBtn" class="btn btn-ghost">⟵ Leave</button>
+      <button id="leaveRoomBtn" class="btn btn-ghost" aria-label="Leave room" title="Leave room">🔙</button>
       <div class="topbar-center">
         <div class="round-chip">Room <b id="roomCode">—</b> · <span id="roomStatus">lobby</span></div>
       </div>
@@ -132,10 +132,10 @@
         </div>
         <div class="seat-grid" id="seatGrid"></div>
         <div class="over-actions">
-          <button id="readyBtn" class="btn btn-secondary">READY</button>
-          <button id="startGameBtn" class="btn btn-hero" hidden>▶ START GAME</button>
+          <button id="readyBtn" class="btn btn-secondary" aria-label="Ready" title="Ready">👍</button>
+          <button id="startGameBtn" class="btn btn-hero" hidden aria-label="Start game" title="Start game">▶️</button>
         </div>
-        <button id="inviteBtn" class="btn btn-secondary btn-wide" type="button">🔗 INVITE FRIENDS</button>
+        <button id="inviteBtn" class="btn btn-secondary btn-wide" type="button" aria-label="Invite friends" title="Invite friends">🔗</button>
         <p class="hint">Share the code <b id="roomCodeShare">—</b> with friends. Empty seats are filled with bots.</p>
         <div class="wins-panel" id="mpWinsPanel" hidden>
           <b>🏆 Wins this room</b>
@@ -157,7 +157,7 @@
             <div class="chat-log" id="chatLog"><div class="chat-empty">Say hi to your table 👋</div></div>
             <form class="chat-form" id="chatForm">
               <input id="chatInput" maxlength="200" placeholder="Type a message…" autocomplete="off" />
-              <button class="btn btn-primary chat-send" type="submit">Send</button>
+              <button class="btn btn-primary chat-send" type="submit" aria-label="Send" title="Send">➤</button>
             </form>
           </div>
         </div>
@@ -217,7 +217,7 @@
   <!-- ===== VS BOT GAME ===== -->
   <section id="game" class="screen">
     <header class="topbar">
-      <button id="quitBtn" class="btn btn-ghost">⟵ Leave table</button>
+      <button id="quitBtn" class="btn btn-ghost" aria-label="Leave table" title="Leave table">🔙</button>
       <div class="topbar-center">
         <div class="round-chip">Round <b id="roundNum">1</b> · Match <b id="matchScore">0 : 0</b></div>
       </div>
@@ -318,7 +318,7 @@
         <div class="pstat"><b id="profileRate">0%</b><span>📈 Win rate</span></div>
       </div>
       <div class="over-actions">
-        <button id="profileCloseBtn" class="btn btn-secondary">Close</button>
+        <button id="profileCloseBtn" class="btn btn-secondary" aria-label="Close" title="Close">✖️</button>
       </div>
     </div>
   </div>
@@ -328,10 +328,10 @@
     <div class="modal">
       <h3>Choose a color</h3>
       <div class="color-grid">
-        <button class="color-choice red" data-color="red" data-label="RED" aria-label="Red"></button>
-        <button class="color-choice yellow" data-color="yellow" data-label="YELLOW" aria-label="Yellow"></button>
-        <button class="color-choice green" data-color="green" data-label="GREEN" aria-label="Green"></button>
-        <button class="color-choice blue" data-color="blue" data-label="BLUE" aria-label="Blue"></button>
+        <button class="color-choice red" data-color="red" data-label="🔴" aria-label="Red"></button>
+        <button class="color-choice yellow" data-color="yellow" data-label="🟡" aria-label="Yellow"></button>
+        <button class="color-choice green" data-color="green" data-label="🟢" aria-label="Green"></button>
+        <button class="color-choice blue" data-color="blue" data-label="🔵" aria-label="Blue"></button>
       </div>
     </div>
   </div>
@@ -344,8 +344,8 @@
       <div class="over-points" id="overPoints"></div>
       <div class="coin-result" id="coinResult" hidden></div>
       <div class="over-actions">
-        <button id="nextRoundBtn" class="btn btn-primary">Next round</button>
-        <button id="homeBtn" class="btn btn-ghost">Main menu</button>
+        <button id="nextRoundBtn" class="btn btn-primary" aria-label="Next round" title="Next round">➡️</button>
+        <button id="homeBtn" class="btn btn-ghost" aria-label="Main menu" title="Main menu">🏠</button>
       </div>
       <div class="save-note" id="saveNote" hidden>Saving result…</div>
     </div>
@@ -365,7 +365,7 @@
         <li>Results are stored in a Neon Postgres cloud database.</li>
       </ul>
       <div class="over-actions">
-        <button id="closeRulesBtn" class="btn btn-primary">Got it</button>
+        <button id="closeRulesBtn" class="btn btn-primary" aria-label="Got it" title="Got it">👍</button>
       </div>
     </div>
   </div>

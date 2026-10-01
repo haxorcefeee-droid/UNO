@@ -661,6 +661,23 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   to { background-position: -120% 0, 0 0; }
 }
 
+/* anime.js color wash: the chosen color breathes across the whole felt
+   (div is created by waveTable() and animated with anime.js) */
+.table-color-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: soft-light;
+  background: radial-gradient(120% 90% at 50% 45%, var(--wave-c, #ffffff) 0%, transparent 70%);
+  will-change: opacity, transform;
+}
+.table-color-wave.red { --wave-c: #ff6b64; }
+.table-color-wave.yellow { --wave-c: #ffd84d; }
+.table-color-wave.green { --wave-c: #4ade80; }
+.table-color-wave.blue { --wave-c: #5aa2ff; }
+
 @keyframes ringBreathe {
   0%, 100% { filter: brightness(0.95); }
   50% { filter: brightness(1.3); }
@@ -1291,9 +1308,10 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .color-ring.show { opacity: 1; animation: ringPulse 1.6s ease-in-out infinite; }
 
+/* filter-only pulse: transform is left free for the anime.js color-change pop */
 @keyframes ringPulse {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.05); filter: brightness(1.35); }
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
 }
 
 .color-ring.show.red { border-color: rgba(227, 59, 59, 0.95); box-shadow: 0 0 22px rgba(227, 59, 59, 0.6), inset 0 0 12px rgba(227, 59, 59, 0.3); }
@@ -1427,6 +1445,23 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .card.wild .val { font-size: calc(var(--card-w) * 0.26); color: #fff; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.6); }
 
+/* +4 is NOT the plain wild 🎨: dark slate shell + chunky gold "+4" so the
+   penalty card is unmistakable at a glance */
+.card.wild.wild4 { --card-tint: #aab4c8; }
+.card.wild.wild4 .inner {
+  background: linear-gradient(160deg, #3d4a63 0%, #232c40 60%, #141a28 100%);
+}
+.card.wild.wild4 .inner::before {
+  background: radial-gradient(ellipse 50% 42% at 50% 50%, rgba(255, 216, 77, 0.3) 0%, transparent 100%);
+  clip-path: none;
+}
+.card.wild.wild4 .val {
+  font-size: calc(var(--card-w) * 0.3);
+  color: #ffd84d;
+  text-shadow: 0 2px 0 #7a4f00, 0 0 12px rgba(255, 216, 77, 0.4);
+}
+.card.wild.wild4 .corner { color: #ffd84d; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
+
 .card.back { padding: 0; }
 
 /* premium card BACK: navy shell, gold filigree ring, glossy sheen */
@@ -1502,7 +1537,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 }
 
 .hand .card {
-  margin-left: calc(var(--card-w) * -0.3);
+  margin-left: calc(var(--card-w) * (var(--hand-overlap, 0.3) - 1));
   transform: rotate(var(--fan-rot, 0deg)) translateY(var(--fan-y, 0px));
   transform-origin: 50% 115%;
   transition: transform var(--t-med) var(--ease-out), box-shadow var(--t-med), filter var(--t-med);
@@ -1782,15 +1817,15 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   position: relative;
 }
 
-/* readable label inside each big color swatch */
+/* readable label inside each big color swatch (emoji dot, no words) */
 .color-choice::after {
   content: attr(data-label);
   position: absolute;
-  bottom: 8px;
+  bottom: 6px;
   left: 50%;
   transform: translateX(-50%);
   font-weight: 900;
-  font-size: 0.85rem;
+  font-size: 1.5rem;
   letter-spacing: 0.08em;
   color: #fff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
