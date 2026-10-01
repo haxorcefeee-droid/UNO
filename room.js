@@ -93,18 +93,19 @@
     else if (opts.locked) el.classList.add("locked");
     const special = ["skip", "reverse", "draw2", "wild", "wild4"].includes(card.value);
     if (special) el.classList.add("special");
+    if (card.value === "wild4") el.classList.add("wild4"); // distinct from plain wild 🎨
     const inner = document.createElement("div");
     inner.className = "inner";
-    const label = card.color === "wild" ? "★" : cardLabel(card);
+    const label = card.color === "wild" ? "🎨" : cardLabel(card);
     const val = document.createElement("span");
     val.className = "val";
     val.textContent = label;
     const tl = document.createElement("span");
     tl.className = "corner tl";
-    tl.textContent = card.color === "wild" ? "★" : cardLabel(card);
+    tl.textContent = label;
     const br = document.createElement("span");
     br.className = "corner br";
-    br.textContent = card.color === "wild" ? "★" : cardLabel(card);
+    br.textContent = label;
     inner.appendChild(val);
     el.appendChild(inner);
     el.appendChild(tl);
@@ -391,7 +392,7 @@
         window.anime({ targets: tb, translateY: [-26, 0], opacity: [0, 1], scale: [0.85, 1], duration: 320, easing: "easeOutBack" });
       }
     }
-    setTableRing(g.activeColor);
+    setTableRing(g.activeColor); // washes the felt with the new color when it changes
     R.activeSeat = g.current;
     R.youSeatIdx = youSeatIdx;
 
@@ -438,12 +439,11 @@
         if (!badge) {
           badge = document.createElement("button");
           badge.className = "sneak-badge";
-          badge.type = "button";
-          badge.textContent = "👁 SNEAK";
+          badge.type = "button";            badge.textContent = "👁";
           badge.addEventListener("click", (e) => {
             e.stopPropagation();
             row.classList.toggle("peek");
-            badge.textContent = row.classList.contains("peek") ? "🙈 HIDE" : "👁 SNEAK";
+            badge.textContent = row.classList.contains("peek") ? "🙈" : "👁";
           });
           row.appendChild(badge);
         }
@@ -479,12 +479,20 @@
     if (dp.dataset.top !== dpKey) {
       dp.dataset.top = dpKey;
       const old = dp.querySelector(".card");
-      if (old) old.remove();
       if (g.discardTop) {
+        // FLICKER FIX: append the new card BEFORE fading the old one out,
+        // so the pile is never empty for even one frame (anime.js crossfade)
         const el = renderCard(g.discardTop, { still: true });
         el.style.setProperty("--tilt", "3deg");
         dp.appendChild(el);
-        if (window.anime && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        if (old) {
+          if (window.anime && motionOK()) {
+            window.anime({ targets: old, opacity: [1, 0], duration: 280, easing: "easeOutQuad", complete: () => old.remove() });
+          } else {
+            old.remove();
+          }
+        }
+        if (window.anime && motionOK()) {
           window.anime({
             targets: el,
             scale: [0.55, 1.12, 1],
@@ -494,12 +502,27 @@
             easing: "easeOutBack",
           });
         }
+      } else if (old) {
+        old.remove();
       }
     }
     const mpRing = $("mpColorRing");
     if (mpRing) {
       const ringCls = g.discardTop ? "color-ring show " + g.activeColor : "color-ring";
-      if (mpRing.className !== ringCls) mpRing.className = ringCls;
+      if (mpRing.className !== ringCls) {
+        const prevColor = (mpRing.className.match(/\b(red|yellow|green|blue)\b/) || [])[1];
+        mpRing.className = ringCls;
+        // anime.js: the ring pops + spins when the ACTIVE COLOR changes
+        if (g.activeColor && prevColor && prevColor !== g.activeColor && window.anime && motionOK()) {
+          window.anime({
+            targets: mpRing,
+            scale: [1, 1.45, 1],
+            rotate: ["0deg", "360deg"],
+            duration: 700,
+            easing: "easeOutBack",
+          });
+        }
+      }
     }
 
     // flight: ONLY on a genuinely new remote play while the room is really
@@ -602,6 +625,10 @@
     const want = color ? "table table-ring " + color : "table";
     if (table.className === want) return; // don't restart the animation every poll
     table.className = want;
+    // when the class actually changed, pulse the felt with the new color (anime.js)
+    if (color && window.Game && window.Game.waveTable && window.anime && motionOK()) {
+      window.Game.waveTable(color);
+    }
   }
 
   // human card names for the play feed
@@ -1004,6 +1031,9 @@
 
     document.querySelectorAll(".color-choice").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (window.anime && motionOK()) { // anime.js pop on the chosen swatch
+          window.anime({ targets: btn, scale: [1, 0.86, 1.12, 1], duration: 420, easing: "easeOutBack" });
+        }
         $("colorOverlay").classList.remove("show");
         if (pendingWild) {
           action("play", { index: pendingWild.index, color: btn.dataset.color });

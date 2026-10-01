@@ -318,7 +318,9 @@ function isSneakUser() {
 
 // ---------- rendering ----------
 function cardFaceLabel(card) {
-  return card.color === "wild" ? "★" : cardLabel(card);
+  if (card.value === "wild") return "🎨"; // plain wild = color changer
+  if (card.value === "wild4") return "+4"; // wild draw four = +4 penalty
+  return cardLabel(card);
 }
 
 function renderCard(card, opts) {
@@ -327,6 +329,9 @@ function renderCard(card, opts) {
   el.className = "card " + card.color;
   if (opts.playable) el.classList.add("playable");
   else if (opts.locked) el.classList.add("locked");
+  const special = ["skip", "reverse", "draw2", "wild", "wild4"].includes(card.value);
+  if (special) el.classList.add("special");
+  if (card.value === "wild4") el.classList.add("wild4"); // distinct from plain wild 🎨
 
   const inner = document.createElement("div");
   inner.className = "inner";
@@ -397,14 +402,32 @@ function topTilt() {
 }
 
 function syncDiscard() {
-  dom.discardPile.innerHTML = "";
+  // FLICKER FIX: the pile is never emptied. The new card is appended FIRST,
+  // the oldest extra card fades out underneath (anime.js). If the top card
+  // didn't change, nothing is touched at all — no rebuild, no flicker.
+  const pile = dom.discardPile;
   const top6 = state.discard.slice(-6);
+  const top = top6[top6.length - 1];
+  const key = top ? top.color + ":" + top.value : "";
+  if (pile.dataset.top === key && pile.children.length === top6.length) return;
+  const grewByOne = pile.children.length === top6.length - 1;
+  pile.dataset.top = key;
   top6.forEach((card, i) => {
     const el = renderCard(card, { noFlip: true }); // pile must not re-flip on every render
     const isTop = i === top6.length - 1;
     el.style.setProperty("--tilt", (isTop ? topTilt() : (i % 2 ? 1 : -1) * (2 + i)) + "deg");
-    dom.discardPile.appendChild(el);
+    pile.appendChild(el);
   });
+  const extra = pile.children.length - top6.length;
+  for (let i = 0; i < extra; i++) {
+    const old = pile.firstElementChild;
+    if (!old) break;
+    if (grewByOne && extra === 1 && hasAnime && !reducedMotion()) {
+      anime({ targets: old, opacity: [1, 0], duration: 260, easing: "easeOutQuad", complete: () => old.remove() });
+    } else {
+      old.remove();
+    }
+  }
 }
 
 function renderAll(opts) {
@@ -628,11 +651,29 @@ function flipCardIn(el) {
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("face-down")));
 }
 
-// keep any hand on-screen: shrink --card-w as the hand grows (mobile-friendly)
+// hands always fit WITHOUT resizing the cards: cards keep ONE constant size
+// (no bigger/smaller jumps as the hand changes) and the fan OVERLAP grows
+// instead. Piles and decks keep their size too.
+// Scoped to the .hand element, so the discard pile never resizes with it.
+function fitHandTo(hand, n) {
+  if (!hand) return;
+  const vw = document.documentElement.clientWidth || window.innerWidth || 375;
+  // ONE constant card size per viewport — never grows/shrinks with hand count
+  const w = Math.max(46, Math.min(82, Math.floor(vw / 6)));
+  hand.style.setProperty("--card-w", w + "px");
+  const avail = vw - 16;
+  const nSafe = Math.max(n || hand.children.length || 1, 1);
+  // the fan OVERLAP grows instead of the cards shrinking: w + (n-1)*w*(1-ov) = avail
+  const raw = nSafe > 1 ? 1 - (avail - w) / ((nSafe - 1) * w) : 0;
+  const overlap = Math.max(0.18, Math.min(0.72, isNaN(raw) ? 0.3 : raw));
+  hand.style.setProperty("--hand-overlap", overlap.toFixed(3));
+}
+
+// fit the hand of whichever screen is ACTIVE (bot table vs multiplayer room)
 function fitHand(n) {
-  const avail = (document.documentElement.clientWidth || window.innerWidth || 375) - 34;
-  const w = Math.max(42, Math.min(108, Math.floor(avail / (1 + Math.max(n - 1, 0) * 0.7))));
-  document.documentElement.style.setProperty("--card-w", w + "px");
+  const room = document.getElementById("roomScreen");
+  const hand = room && room.classList.contains("active") ? document.getElementById("mpPlayerHand") : dom.playerHand;
+  fitHandTo(hand, n);
 }
 
 // the discard pile of the SCREEN THAT IS ACTIVE (multiplayer room vs bot table)
@@ -995,7 +1036,13 @@ function settleTopCard() {
 // pulsing ring around the discard pile showing the running color
 function setRing(ringEl, color) {
   if (!ringEl) return;
+  const prev = (ringEl.className.match(/\b(red|yellow|green|blue)\b/) || [])[1];
   ringEl.className = "color-ring show " + color;
+  // anime.js: ring pops + spins whenever the ACTIVE COLOR changes
+  if (color && prev && prev !== color && hasAnime && !reducedMotion()) {
+    anime.remove(ringEl);
+    anime({ targets: ringEl, scale: [1, 1.45, 1], rotate: ["0deg", "360deg"], duration: 700, easing: "easeOutBack" });
+  }
 }
 
 // animated color running around the WHOLE table edge (the color to match)
@@ -1006,6 +1053,31 @@ function setTableRing(color) {
   if (color) {
     table.classList.add("table-ring", color);
   }
+  waveTable(color);
+}
+
+// anime.js color wash: the chosen color breathes across the ACTIVE table's felt
+function waveTable(color) {
+  if (!color || !hasAnime || reducedMotion()) return;
+  const room = document.getElementById("roomScreen");
+  let table = null;
+  if (room && room.classList.contains("active")) table = document.getElementById("roomTable");
+  if (!table) table = dom.discardPile && dom.discardPile.closest(".table");
+  if (!table) return;
+  let wave = table.querySelector(".table-color-wave");
+  if (!wave) {
+    wave = document.createElement("div");
+    table.appendChild(wave);
+  }
+  wave.className = "table-color-wave " + color;
+  anime.remove(wave);
+  anime({
+    targets: wave,
+    opacity: [0, 0.4, 0.18],
+    scale: [0.55, 1.06, 1],
+    duration: 1200,
+    easing: "easeOutCubic",
+  });
 }
 
 // full-screen special-card FX
@@ -1017,10 +1089,10 @@ function playSpecialFX(kind, subtitle) {
   main.className = "fx-main";
   main.textContent = {
     d2: "+2",
-    w4: "+4",
+    w4: "🎨 +4",
     skip: "SKIPPED!",
     rev: "REVERSED!",
-    wild: "WILD!",
+    wild: "🎨 WILD!",
   }[kind] || "";
   burst.appendChild(main);
   if (subtitle) {
@@ -1418,6 +1490,9 @@ dom.overHomeBtn.addEventListener("click", () => {
 Array.prototype.forEach.call(document.querySelectorAll(".color-choice"), (btn) => {
   btn.addEventListener("click", () => {
     const color = btn.dataset.color;
+    if (hasAnime && !reducedMotion()) { // anime.js pop on the chosen swatch
+      anime({ targets: btn, scale: [1, 0.86, 1.12, 1], duration: 420, easing: "easeOutBack" });
+    }
     dom.colorOverlay.classList.remove("show");
     if (state.pendingCard) {
       const card = state.pendingCard;
@@ -1582,10 +1657,24 @@ window.Game = {
   fitHand,
   unoMoment,
   setTableRing,
+  waveTable,
   tossDealer,
   flyFromEl,
   sound: Sound,
 };
+
+// refit BOTH hands on rotate/resize — with a constant card size this only
+// recomputes the fan overlap, so nothing ever grows or shrinks on screen
+let resizeT = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    // refit BOTH hands — only the fan overlap changes, never the card size
+    fitHandTo(document.getElementById("mpPlayerHand"));
+    fitHandTo(dom.playerHand);
+    if (dom.playerHand && dom.playerHand.children.length) applyFan();
+  }, 120);
+});
 
 // ---------- profile menu (all modes) ----------
 function openProfile() {
