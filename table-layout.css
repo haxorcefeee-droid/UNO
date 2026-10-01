@@ -11,6 +11,8 @@
   --table-felt-deep: #0b403c;
   --table-edge: #e5a645;
   --table-cream: #fff9e8;
+  /* The hand is a fixed gameplay region, not incidental overflow. */
+  --hand-slot: clamp(142px, 21vh, 174px);
 }
 
 body {
@@ -75,7 +77,7 @@ body {
 
 #game > .table,
 #mpGame {
-  grid-template-rows: minmax(98px, auto) minmax(210px, 1fr) minmax(60px, auto) minmax(126px, auto);
+  grid-template-rows: minmax(98px, auto) minmax(210px, 1fr) minmax(60px, auto) var(--hand-slot);
   row-gap: clamp(4px, 1.1vh, 10px);
   padding: clamp(6px, 1.4vh, 12px) clamp(10px, 2.2vw, 26px) clamp(8px, 1.6vh, 14px);
   isolation: isolate;
@@ -312,7 +314,7 @@ body {
   #game > .table,
   #mpGame {
     grid-template-columns: minmax(180px, 27%) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(58px, auto) minmax(112px, auto);
+    grid-template-rows: minmax(0, 1fr) minmax(58px, auto) minmax(126px, auto);
     column-gap: clamp(12px, 2.4vw, 26px);
   }
 
@@ -366,7 +368,8 @@ body {
 @media (max-width: 560px) {
   #game > .table,
   #mpGame {
-    grid-template-rows: minmax(90px, auto) minmax(200px, 1fr) 60px minmax(118px, auto);
+    --hand-slot: clamp(134px, 19vh, 158px);
+    grid-template-rows: minmax(90px, auto) minmax(200px, 1fr) 60px var(--hand-slot);
   }
 
   #game > .table > .opponent-zone {
@@ -417,7 +420,8 @@ body {
 @media (max-width: 360px) {
   #game > .table,
   #mpGame {
-    grid-template-rows: 88px minmax(190px, 1fr) 58px minmax(108px, auto);
+    --hand-slot: 126px;
+    grid-template-rows: 88px minmax(190px, 1fr) 58px var(--hand-slot);
   }
 
   .draw-hint { font-size: 0.65rem; }
