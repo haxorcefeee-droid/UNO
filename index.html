@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#071A2D" />
+  <meta name="theme-color" content="#49c4ff" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="world.css" />
 </head>
 <body>
   <div class="room-light" aria-hidden="true"></div>
@@ -21,17 +22,9 @@
   <section id="home" class="screen active" data-dock="play">
     <div class="home-inner">
       <div class="menu-play">
-        <div class="table-preview" aria-hidden="true">
-          <div class="tp-card red"><span class="corner tl">1</span><span class="oval"></span><span class="val">1</span><span class="corner br">1</span></div>
-          <div class="tp-card wild"><span class="corner tl">★</span><span class="oval"></span><span class="val">★</span><span class="corner br">★</span></div>
-          <div class="tp-card blue"><span class="corner tl">7</span><span class="oval"></span><span class="val">7</span><span class="corner br">7</span></div>
-        </div>
-        <h1 class="brand"><span class="brand-cards" aria-hidden="true"><i class="bc red">7</i><i class="bc blue">3</i><i class="bc yellow">2</i><i class="bc green">8</i></span>UNO</h1>
-        <p class="tagline">Classic UNO at a real table</p>
-
         <div class="home-card">
           <div id="authArea">
-            <label>Getting started</label>
+            <label>Account</label>
             <input id="playerName" maxlength="16" placeholder="Pick a name…" autocomplete="off" />
             <input id="playerPass" type="password" maxlength="64" placeholder="Password (4+ chars)" autocomplete="off" />
             <div class="auth-row">
@@ -53,11 +46,17 @@
           </div>
         </div>
 
-        <button id="playCpuBtn" class="btn btn-hero" type="button">Quick match</button>
-        <div class="cta-row">
-          <button id="openRoomsBtn" class="btn btn-secondary cta-half" type="button">Create room</button>
-          <button id="joinRoomNavBtn" class="btn btn-join cta-half" type="button">Join room</button>
+        <div class="mode-board">
+          <button id="playCpuBtn" class="mode-card mode-classic" type="button">
+            <span class="mode-art" aria-hidden="true"><span class="mode-word">UNO</span></span>
+            <span class="mode-label">Classic<br>Mode</span>
+          </button>
+          <button id="openRoomsBtn" class="mode-card mode-friends" type="button">
+            <span class="mode-art mode-art-house" aria-hidden="true"></span>
+            <span class="mode-label">Play with<br>Friends</span>
+          </button>
         </div>
+        <button id="joinRoomNavBtn" class="join-chip" type="button">Join with a code</button>
       </div>
 
       <div class="home-leaderboard">
@@ -69,7 +68,7 @@
         <button type="button" class="dock-btn on" data-dock="play">Play</button>
         <button type="button" class="dock-btn" data-dock="ranks">Ranks</button>
         <button type="button" class="dock-btn" id="homeProfileBtn">Profile</button>
-        <button type="button" class="dock-btn" id="rulesBtn">Rules</button>
+        <button type="button" class="dock-btn" id="rulesBtn">Tutorial</button>
       </nav>
     </div>
   </section>
@@ -192,7 +191,7 @@
 
         <div class="player-zone">
           <div class="action-row">
-            <button id="mpUnoBtn" class="btn btn-uno" disabled>UNO!</button>
+            <button id="mpUnoBtn" class="btn btn-uno" type="button" disabled><span class="uno-call">CALL</span><span class="uno-word">UNO</span></button>
             <div class="draw-hint" id="mpDrawHint"></div>
           </div>
           <div class="hand" id="mpPlayerHand"></div>
@@ -283,7 +282,7 @@
       <!-- Player -->
       <div class="player-zone">
         <div class="action-row">
-          <button id="unoBtn" class="btn btn-uno" disabled>UNO!</button>
+          <button id="unoBtn" class="btn btn-uno" type="button" disabled><span class="uno-call">CALL</span><span class="uno-word">UNO</span></button>
           <div class="draw-hint" id="drawHint">It's your turn — play a card</div>
         </div>
         <div class="hand" id="playerHand"></div>
