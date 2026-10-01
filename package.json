@@ -3,16 +3,21 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "UNO card game — simple HTML/JS frontend with a Neon Postgres leaderboard",
+  "description": "UNO card game \u2014 simple HTML/JS frontend with a Neon Postgres leaderboard",
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "bundle": "esbuild src/world3d.js --bundle --minify --format=iife --outfile=vendor/world3d.js --log-level=warning"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0"
   },
   "engines": {
     "node": ">=19"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
   }
 }

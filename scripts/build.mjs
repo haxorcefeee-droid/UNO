@@ -7,10 +7,12 @@ const out = path.join(root, "dist");
 mkdirSync(out, { recursive: true });
 mkdirSync(path.join(out, "vendor"), { recursive: true });
 
-for (const file of ["index.html", "style.css", "game.js", "room.js"]) {
+for (const file of ["index.html", "style.css", "world.css", "table-layout.css", "world3d.css", "game.js", "room.js"]) {
   copyFileSync(path.join(root, file), path.join(out, file));
 }
-copyFileSync(path.join(root, "vendor", "anime.min.js"), path.join(out, "vendor", "anime.min.js"));
+for (const f of ["anime.min.js", "world3d.js"]) {
+  copyFileSync(path.join(root, "vendor", f), path.join(out, "vendor", f));
+}
 
 // Cache-bust: rewrite asset links in dist/index.html with a short content
 // hash (?v=abcd1234). Browsers fetch new assets immediately after each
@@ -21,6 +23,10 @@ const hash = (file) =>
 
 const busted = html
   .replace(/style\.css(?=")/g, `style.css?v=${hash("style.css")}`)
+  .replace(/world\.css(?=")/g, `world.css?v=${hash("world.css")}`)
+  .replace(/table-layout\.css(?=")/g, `table-layout.css?v=${hash("table-layout.css")}`)
+  .replace(/world3d\.css(?=")/g, `world3d.css?v=${hash("world3d.css")}`)
+  .replace(/vendor\/world3d\.js(?=")/g, `vendor/world3d.js?v=${hash(path.join("vendor", "world3d.js"))}`)
   .replace(/game\.js(?=")/g, `game.js?v=${hash("game.js")}`)
   .replace(/room\.js(?=")/g, `room.js?v=${hash("room.js")}`)
   .replace(/vendor\/anime\.min\.js(?=")/g, `vendor/anime.min.js?v=${hash(path.join("vendor", "anime.min.js"))}`);
