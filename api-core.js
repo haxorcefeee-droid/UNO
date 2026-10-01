@@ -8,8 +8,10 @@ import {
   joinRoomPlayer, roomPlayers, leaveRoom, setReady, bumpRoom,
   sendChat, getChat,
   saveGameState, saveGameStateCAS, deleteRoom,
+  sweepStaleRooms, roomsOfUser,
   ensureSchemaOnce, databaseStatus, publicDbError,
 } from "./db.js";
+import { handleSocial } from "./social-core.js";
 import {
   newGame, playCard, pickColor, drawTurn, passTurn,
   botMove, legalMoves,
@@ -177,6 +179,82 @@ export async function runBotsAndSettle(room) {
   }
 }
 
+
+// Leaving mid-game forfeits: the remaining player(s) win and the ante settles.
+async function leaveRoomFlow(room, user) {
+  if (room.status === "playing") {
+    const game = room.game_state && room.game_state.deck ? room.game_state : null;
+    const leaverSeat = game ? game.players.findIndex((p) => p.userId === user.id) : -1;
+    if (game && game.winner === null && leaverSeat >= 0) {
+      game.players.splice(leaverSeat, 1);
+      if (room.ante > 0) await addCoins(user.id, -room.ante);
+      await recordResult(user.id, false);
+      const humansLeft = game.players.filter((p) => !p.isBot).length;
+      if (game.players.length === 1 || humansLeft === 0) {
+        game.winner = 0; // last player standing
+        game.current = 0;
+      } else if (game.current >= game.players.length) {
+        game.current = 0;
+      }
+      if (game.winner !== null) {
+        await settleRound(room, game);
+        await saveGameState(room.id, game);
+        await bumpRoom(room.id, { status: "finished" });
+      }
+    }
+  }
+
+  await leaveRoom(room.id, user.id);
+  const players = await roomPlayers(room.id);
+  const humans = players.filter((p) => !p.username.startsWith("BOT_"));
+  if (humans.length === 0) {
+    await deleteRoom(room.id);
+  } else if (room.host_id === user.id && room.status !== "playing") {
+    await bumpRoom(room.id, { host_id: humans[0].id });
+  }
+}
+
+// A player can only be in one room: starting a new one clears the old ones.
+async function leaveAllRooms(user) {
+  const rooms = await roomsOfUser(user.id);
+  for (const room of rooms) await leaveRoomFlow(room, user);
+}
+
+const TURN_CHOICES = [15, 30, 45, 60, 90];
+const GRACE_MS = 4000;
+const SLACK_MS = 4000;
+
+// Server-side turn clock: if the player on turn never acts (closed tab,
+// dead connection) the table must not freeze, so the server draws for them.
+async function enforceTurnClock(room) {
+  const game = room.game_state && room.game_state.deck ? room.game_state : null;
+  if (!game || room.status !== "playing" || game.winner !== null) return room;
+  const seat = game.current;
+  const p = game.players[seat];
+  if (!p || p.isBot) return room;
+  const since = game.lastAction && game.lastAction.at ? game.lastAction.at : new Date(room.updated_at).getTime();
+  if (!Number.isFinite(since)) return room;
+  const limit = since + GRACE_MS + (room.turn_seconds || 30) * 1000 + SLACK_MS;
+  if (Date.now() < limit) return room;
+
+  if (game.awaitingColor === seat) {
+    pickColor(game, seat, ["red", "yellow", "green", "blue"][Math.floor(Math.random() * 4)]);
+  } else {
+    const drawn = drawTurn(game, seat);
+    if (drawn.ok && game.current === seat && game.winner === null) passTurn(game, seat);
+  }
+  game.lastAction = { ...(game.lastAction || {}), at: Date.now() };
+  const saved = await saveGameStateCAS(room.id, room.version, game);
+  if (!saved) return findRoomById(room.id);
+  if (game.winner !== null) {
+    await settleRound(room, game);
+    await bumpRoom(room.id, { status: "finished" });
+  } else {
+    await runBotsAndSettle(await findRoomById(room.id));
+  }
+  return findRoomById(room.id);
+}
+
 // ---------- main API handler (framework-agnostic) ----------
 export async function handleApi(req, res, url) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
@@ -250,25 +328,36 @@ export async function handleApi(req, res, url) {
       return json(200, { coins });
     }
 
+    // ----- friends / presence / notifications -----
+    if (parts[1] === "social") {
+      return handleSocial(user, parts[2], req.method, body);
+    }
+
     // ----- rooms -----
     if (parts[1] === "rooms") {
       if (parts[2] === "list" && req.method === "GET") {
+        await sweepStaleRooms();
         return json(200, { rooms: await listPublicRooms() });
       }
 
       if (parts[2] === "create" && req.method === "POST") {
-        const ante = Math.max(0, Math.min(Number(body.ante) || 25, 500));
+        const rawAnte = body.ante === "" || body.ante == null ? 25 : Number(body.ante);
+        const ante = Number.isFinite(rawAnte) ? Math.max(0, Math.min(Math.floor(rawAnte), 500)) : 25;
         const isPublic = body.isPublic !== false;
         const maxPlayers = Math.max(2, Math.min(Number(body.maxPlayers) || 4, 4));
-        if (user.coins < ante) return json(400, { error: "Not enough coins for that ante" });
+        const wantedTurn = Number(body.turnSeconds);
+        const turnSeconds = TURN_CHOICES.includes(wantedTurn) ? wantedTurn : 30;
+        if (user.coins < ante) return json(400, { error: "Not enough coins for that bet" });
+        await leaveAllRooms(user);
+        await sweepStaleRooms();
         let code = roomCode();
         for (let i = 0; i < 5; i++) {
           if (!(await findRoomByCode(code))) break;
           code = roomCode();
         }
-        const room = await createRoom({ code, hostId: user.id, ante, isPublic, maxPlayers });
+        const room = await createRoom({ code, hostId: user.id, ante, isPublic, maxPlayers, turnSeconds });
         await joinRoomPlayer(room.id, user.id, 0);
-        return json(201, { room: { ...room, hostName: user.username } });
+        return json(201, { room: { ...room, hostName: user.username, turnSeconds } });
       }
 
       if (parts[2] === "join" && req.method === "POST") {
@@ -281,7 +370,9 @@ export async function handleApi(req, res, url) {
         if (players.length >= room.max_players) return json(400, { error: "Room is full" });
         if (room.status === "playing") return json(400, { error: "Game already in progress" });
         if (user.coins < room.ante) return json(400, { error: "Not enough coins for that ante" });
-        const used = players.map((p) => p.seat);
+        await leaveAllRooms(user);
+        const fresh = await roomPlayers(room.id);
+        const used = fresh.map((p) => p.seat);
         let seat = 0;
         while (used.includes(seat)) seat++;
         await joinRoomPlayer(room.id, user.id, seat);
@@ -292,37 +383,7 @@ export async function handleApi(req, res, url) {
       if (parts[2] === "leave" && req.method === "POST") {
         const room = await findRoomById(Number(body.roomId || parts[3]));
         if (!room) return json(404, { error: "Room not found" });
-
-        // leaving mid-game = forfeit: remaining player(s) win, ante settles
-        if (room.status === "playing") {
-          const game = room.game_state && room.game_state.deck ? room.game_state : null;
-          const leaverSeat = game
-            ? game.players.findIndex((p) => p.userId === user.id)
-            : -1;
-          if (game && game.winner === null && leaverSeat >= 0) {
-            game.players.splice(leaverSeat, 1);
-            if (game.players.length === 1) {
-              game.winner = 0; // last player standing
-              game.current = 0;
-            } else if (game.current >= game.players.length) {
-              game.current = 0;
-            }
-            if (game.winner !== null) {
-              await settleRound(room, game);
-              await saveGameState(room.id, game);
-              await bumpRoom(room.id, { status: "finished" });
-            }
-          }
-        }
-
-        await leaveRoom(room.id, user.id);
-        const players = await roomPlayers(room.id);
-        if (players.length === 0) {
-          // empty room: clean up finished rooms immediately, keep others brief
-          await deleteRoom(room.id);
-        } else if (room.host_id === user.id && room.status !== "playing") {
-          await bumpRoom(room.id, { host_id: players[0].id });
-        }
+        await leaveRoomFlow(room, user);
         return json(200, { ok: true });
       }
 
@@ -349,6 +410,8 @@ export async function handleApi(req, res, url) {
       if (parts[2] === "chat" && req.method === "GET") {
         const room = await findRoomByCode(String(parts[3] || url.searchParams.get("code") || "").toUpperCase());
         if (!room) return json(404, { error: "Room not found" });
+        const members = await roomPlayers(room.id);
+        if (!members.some((m) => m.id === user.id)) return json(403, { error: "Join the room to read the chat" });
         const msgs = await getChat(room.id, 30);
         return json(200, { msgs });
       }
@@ -358,8 +421,9 @@ export async function handleApi(req, res, url) {
         // The query form is required on Vercel, where a nested catch-all
         // route only receives ONE path segment (rooms/state/CODE 404s there).
         const code = String(parts[3] || url.searchParams.get("code") || "").toUpperCase();
-        const room = await findRoomByCode(code);
+        let room = await findRoomByCode(code);
         if (!room) return json(404, { error: "Room not found" });
+        room = await enforceTurnClock(room);
         // finished + only bots left → sweep the room (players already out)
         if (room.status === "finished") {
           const leftover = await roomPlayers(room.id);
@@ -377,7 +441,8 @@ export async function handleApi(req, res, url) {
           room: {
             id: room.id, code: room.code, status: room.status, ante: room.ante,
             maxPlayers: room.max_players, hostName: room.hostName,
-            hostId: room.host_id, version: room.version,
+            hostId: room.host_id, version: room.version, turnSeconds: room.turn_seconds || 30,
+            isPublic: room.is_public,
           },
           players,
           you: { id: user.id, seat, username: user.username, coins: user.coins },

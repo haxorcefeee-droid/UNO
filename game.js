@@ -1588,6 +1588,7 @@ if (loginBtn) {
       await Auth.login(playerNameInput.value.trim(), playerPassInput.value);
       authMsg.textContent = "Welcome back, " + Auth.user.username + "!";
       renderAuthUI();
+      syncRoomsAuth();
     } catch (err) {
       authMsg.textContent = err.message;
     }
@@ -1600,6 +1601,7 @@ if (registerBtn) {
       await Auth.register(playerNameInput.value.trim(), playerPassInput.value);
       authMsg.textContent = "Account created — you start with 500 coins!";
       renderAuthUI();
+      syncRoomsAuth();
     } catch (err) {
       authMsg.textContent = err.message;
     }
@@ -1611,6 +1613,7 @@ if (logoutBtn) {
     await Auth.logout();
     authMsg.textContent = "Signed out.";
     renderAuthUI();
+    syncRoomsAuth();
   });
 }
 
@@ -1621,11 +1624,26 @@ if (playCpuBtn) {
   });
 }
 
+// rooms and friends talk to the same account; keep them in step with sign-in
+function syncRoomsAuth() {
+  if (window.Rooms) {
+    window.Rooms.token = Auth.token;
+    if (Auth.token) window.Rooms.loadMe();
+  }
+  document.dispatchEvent(new CustomEvent("uno-auth", { detail: Auth.user }));
+}
+
+function needSignIn(message) {
+  authMsg.textContent = message;
+  toast(message, "bad");
+  const field = Auth.user ? null : playerNameInput;
+  if (field) field.focus();
+}
+
 if (openRoomsBtn) {
   openRoomsBtn.addEventListener("click", () => {
-    dom.home.classList.remove("active");
-    document.getElementById("rooms").classList.add("active");
-    if (window.Rooms) window.Rooms.refreshRooms();
+    if (!Auth.user) return needSignIn("Sign in or create an account to play with friends.");
+    if (window.Rooms) window.Rooms.openRooms("browse");
   });
 }
 
@@ -1780,11 +1798,9 @@ renderAuthUI = function () {
   const nav = document.getElementById("joinRoomNavBtn");
   if (nav) {
     nav.addEventListener("click", () => {
-      if (window.Rooms) window.Rooms.openRooms();
-      setTimeout(() => {
-        const input = document.getElementById("joinCode");
-        if (input) input.focus();
-      }, 120);
+      if (!Auth.user) return needSignIn("Sign in to join a room with a code.");
+      if (window.Social) window.Social.openCode();
+      else if (window.Rooms) window.Rooms.openRooms("code");
     });
   }
 })();
@@ -1793,5 +1809,6 @@ renderAuthUI = function () {
 (async function boot() {
   await Auth.refresh();
   renderAuthUI();
+  syncRoomsAuth();
   loadLeaderboard();
 })();

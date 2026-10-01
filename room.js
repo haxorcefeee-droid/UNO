@@ -45,6 +45,7 @@
   }
 
   async function api(path, opts = {}) {
+    R.token = localStorage.getItem("uno-table-token") || R.token;
     const res = await fetch("/api/" + path, {
       method: opts.method || "GET",
       headers: {
@@ -150,25 +151,46 @@
   }
 
   // ---------- lobby ----------
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
   async function refreshRooms() {
+    const list = $("roomsList");
     try {
       const data = await api("rooms/list");
-      const list = $("roomsList");
       list.innerHTML = "";
       if (!data.rooms.length) {
-        list.innerHTML = '<div class="room-row empty">No public rooms yet — create one!</div>';
+        const empty = document.createElement("div");
+        empty.className = "room-row empty";
+        empty.innerHTML = '<span>No open tables right now.</span>';
+        const mk = document.createElement("button");
+        mk.className = "btn btn-secondary mini-btn";
+        mk.type = "button";
+        mk.textContent = "Create one";
+        mk.addEventListener("click", () => setRoomsPane("create"));
+        empty.appendChild(mk);
+        list.appendChild(empty);
       }
       data.rooms.forEach((r) => {
+        const open = r.status === "lobby" && r.playerCount < r.maxPlayers;
         const row = document.createElement("div");
-        row.className = "room-row";
+        row.className = "room-row" + (open ? "" : " closed");
         row.innerHTML =
-          '<div class="room-code">' + r.code + "</div>" +
-          '<div class="room-host">host ' + r.hostName + "</div>" +
-          '<div class="room-meta">' + r.playerCount + "/" + r.maxPlayers + " · 🪙" + r.ante + " · " + r.status + "</div>";
+          '<div class="room-main">' +
+            '<div class="room-top"><span class="room-code">' + esc(r.code) + '</span>' +
+            '<span class="room-state ' + (r.status === "lobby" ? "open" : "live") + '">' + (r.status === "lobby" ? "Open" : "In game") + '</span></div>' +
+            '<div class="room-host">host ' + esc(r.hostName) + '</div>' +
+          '</div>' +
+          '<div class="room-meta">' +
+            '<span title="Players">👥 ' + r.playerCount + '/' + r.maxPlayers + '</span>' +
+            '<span title="Coins per game">🪙 ' + r.ante + '</span>' +
+            '<span title="Turn time">⏱ ' + (r.turnSeconds || 30) + 's</span>' +
+          '</div>';
         const btn = document.createElement("button");
-        btn.className = "btn btn-ghost";
-        btn.textContent = "JOIN";
-        btn.addEventListener("click", () => joinRoom(r.code));
+        btn.className = "btn btn-join mini-btn";
+        btn.type = "button";
+        btn.textContent = open ? "JOIN" : (r.status === "lobby" ? "FULL" : "LIVE");
+        btn.disabled = !open;
+        btn.addEventListener("click", () => joinRoom(r.code).catch(() => {}));
         row.appendChild(btn);
         list.appendChild(row);
       });
@@ -177,8 +199,6 @@
     } catch (err) {
       $("roomsPill").textContent = "● offline";
       $("roomsPill").className = "db-pill err";
-      // show WHY it is offline (usually DATABASE_URL is not set yet)
-      const list = $("roomsList");
       list.innerHTML = "";
       const row = document.createElement("div");
       row.className = "room-row empty";
@@ -187,19 +207,88 @@
     }
   }
 
+  // browse/create/code tabs + live refresh while the lobby is open
+  let roomsTimer = null;
+  function setRoomsPane(name) {
+    document.querySelectorAll("#rooms .rooms-tabs .seg-btn").forEach((b) => b.classList.toggle("on", b.dataset.pane === name));
+    document.querySelectorAll("#rooms .rooms-pane").forEach((p) => { p.hidden = p.dataset.pane !== name; });
+    $("roomsMsg").textContent = "";
+    $("roomsCoins").textContent = (R.user && R.user.coins) || 0;
+    if (name === "browse") refreshRooms();
+    if (name === "code") setTimeout(() => $("joinCode").focus(), 60);
+    if (name === "create") updateCreateSummary();
+  }
+
+  function startRoomsTimer() {
+    stopRoomsTimer();
+    roomsTimer = setInterval(() => {
+      if (!$("rooms").classList.contains("active") || document.hidden) return;
+      const pane = document.querySelector("#rooms .rooms-pane:not([hidden])");
+      if (pane && pane.dataset.pane === "browse") refreshRooms();
+    }, 4000);
+  }
+  function stopRoomsTimer() { if (roomsTimer) { clearInterval(roomsTimer); roomsTimer = null; } }
+
+  function updateCreateSummary() {
+    const ante = Math.max(0, Math.min(500, parseInt($("roomAnte").value, 10) || 0));
+    const n = Number($("roomMaxPlayers").value) || 4;
+    const coins = (R.user && R.user.coins) || 0;
+    const el = $("createSummary");
+    if (!el) return;
+    el.textContent = ante === 0
+      ? "Friendly game: no coins at stake."
+      : "Each loser pays 🪙" + ante + ". With " + n + " players the winner takes 90% of the 🪙" + (ante * n) + " pot." +
+        (coins < ante ? " You only have 🪙" + coins + "." : "");
+    $("roomsCoins").textContent = coins;
+  }
+
+  function wireCreateOptions() {
+    const bindSeg = (segId, hiddenId, onChange) => {
+      const seg = $(segId);
+      seg.querySelectorAll(".seg-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          seg.querySelectorAll(".seg-btn").forEach((b) => b.classList.toggle("on", b === btn));
+          $(hiddenId).value = btn.dataset.v;
+          if (onChange) onChange();
+        });
+      });
+    };
+    bindSeg("playerSeg", "roomMaxPlayers", updateCreateSummary);
+    bindSeg("turnSeg", "roomTurn");
+    bindSeg("visSeg", "roomPublic");
+    const syncChips = () => {
+      const v = String(parseInt($("roomAnte").value, 10));
+      document.querySelectorAll("#anteChips .chip").forEach((c) => c.classList.toggle("on", c.dataset.v === v));
+    };
+    document.querySelectorAll("#anteChips .chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        $("roomAnte").value = chip.dataset.v;
+        syncChips();
+        updateCreateSummary();
+      });
+    });
+    $("roomAnte").addEventListener("input", () => { syncChips(); updateCreateSummary(); });
+    document.querySelectorAll("#rooms .rooms-tabs .seg-btn").forEach((b) => b.addEventListener("click", () => setRoomsPane(b.dataset.pane)));
+    $("roomsRefreshBtn").addEventListener("click", refreshRooms);
+  }
+
   async function createRoom() {
     try {
       const data = await api("rooms/create", {
         method: "POST",
         body: {
-          ante: Number($("roomAnte").value) || 25,
+          ante: Math.max(0, Math.min(500, parseInt($("roomAnte").value, 10) || 0)),
           maxPlayers: Number($("roomMaxPlayers").value) || 4,
+          turnSeconds: Number($("roomTurn").value) || 30,
+          isPublic: $("roomPublic").value !== "0",
         },
       });
       enterRoom(data.room);
+      return data.room;
     } catch (err) {
       $("roomsMsg").textContent = err.message;
       showError(err.message);
+      throw err;
     }
   }
 
@@ -207,8 +296,11 @@
     try {
       const data = await api("rooms/join", { method: "POST", body: { code } });
       enterRoom(data.room);
+      return data.room;
     } catch (err) {
       $("roomsMsg").textContent = err.message;
+      toast(err.message, "bad");
+      throw err;
     }
   }
 
@@ -216,8 +308,14 @@
     // fresh room → fresh tally (per-room win counts)
     if (!R.room || R.room.code !== room.code) { R.wins = {}; }
     R.room = room;
+    R.game = null;
+    R.lastTurnKey = null;
     R.chatLastId = 0;
     R.chatUnread = 0;
+    R.chatPrimed = false;
+    stopRoomsTimer();
+    const badge0 = $("chatUnread");
+    if (badge0) badge0.hidden = true;
     const log = $("chatLog");
     if (log) log.innerHTML = '<div class="chat-empty">Say hi to your table 👋</div>';
     $("home").classList.remove("active");
@@ -258,15 +356,19 @@
 
   async function pollOnce() {
     if (!R.room) return;
+    const polledCode = R.room.code;
     try {
       // query form: Vercel's nested catch-all drops the second path segment
-      const data = await api("rooms/state?code=" + encodeURIComponent(R.room.code));
+      const data = await api("rooms/state?code=" + encodeURIComponent(polledCode));
+      if (!R.room || R.room.code !== polledCode) return; // switched rooms while waiting
       const prev = R.game;
       R.players = data.players;
       R.game = data.game;
       R.you = data.you;
       R.sneak = !!data.sneak; // server grants SNEAK only to the special username
       R.roomStatus = data.room.status;
+      R.turnSeconds = data.room.turnSeconds || 30;
+      if (R.room) R.room.turnSeconds = R.turnSeconds;
       hideError();
 
       $("roomStatus").textContent = data.room.status;
@@ -290,6 +392,7 @@
       refreshChat();
     } catch (err) {
       // room may have been deleted
+      if (!R.room || R.room.code !== polledCode) return;
       if (String(err.message).includes("not found")) {
         stopPolling();
         R.room = null;
@@ -306,13 +409,17 @@
     grid.innerHTML = "";
     const maxEl = $("lobbyMax");
     if (maxEl) maxEl.textContent = data.room.maxPlayers;
+    if ($("lobbyAnte")) $("lobbyAnte").textContent = data.room.ante;
+    if ($("lobbyTurn")) $("lobbyTurn").textContent = data.room.turnSeconds || 30;
+    const invBtn = $("inviteFriendsBtn");
+    if (invBtn) invBtn.hidden = data.room.status !== "lobby" || data.players.length >= data.room.maxPlayers;
     for (let i = 0; i < data.room.maxPlayers; i++) {
       const p = data.players.find((x) => x.seat === i);
       const isHost = p && p.id === data.room.hostId;
       const cell = document.createElement("div");
       cell.className = "seat-cell" + (p ? " taken" : "");
       cell.innerHTML = p
-        ? '<div class="avatar ' + (p.id === data.you.id ? "you" : "cpu") + '">' +
+        ? '<div class="avatar ' + (p.id === data.you.id ? "you" : p.username.startsWith("BOT_") ? "cpu" : "other") + '">' +
           (p.id === data.you.id ? "YOU" : p.username.slice(0, 3).toUpperCase()) + "</div>" +
           '<div class="seat-cell-name">' + (isHost ? "👑 " : "") + p.username + "</div>" +
           '<div class="seat-cell-coins">🪙' + p.coins + "</div>" +
@@ -378,7 +485,7 @@
     const turnKey = g.current + ":" + (g.lastAction ? g.lastAction.at : 0);
     if (R.lastTurnKey !== turnKey) {
       R.lastTurnKey = turnKey;
-      R.timerEnd = g.winner == null ? Date.now() + PLAY_GRACE_MS + TURN_MS : 0;
+      R.timerEnd = g.winner == null ? Date.now() + PLAY_GRACE_MS + turnMs() : 0;
       R.graceUntil = Date.now() + PLAY_GRACE_MS; // clock holds during the feed
     }
     tickTimer(g, youSeatIdx, myTurn);
@@ -677,10 +784,18 @@
     try {
       const data = await api("rooms/chat?code=" + encodeURIComponent(R.room.code));
       const msgs = data.msgs || [];
+      const primed = R.chatPrimed;
+      R.chatPrimed = true;
       const fresh = msgs.filter((m) => m.id > R.chatLastId);
       if (!fresh.length) return;
       fresh.forEach(chatAppend);
       R.chatLastId = fresh[fresh.length - 1].id;
+      const theirs = fresh.filter((m) => m.username !== (R.you && R.you.username));
+      if (primed && !R.chatOpen && theirs.length) {
+        const last = theirs[theirs.length - 1];
+        toast("💬 " + last.username + ": " + last.body.slice(0, 60), "good");
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
       if (!R.chatOpen) {
         const mine = fresh.every((m) => m.username === (R.you && R.you.username));
         if (!mine) {
@@ -831,7 +946,7 @@
   // radar sweep on the active seat, auto draw+pass on your own expiry.
   // After ANY play, the countdown pauses for a few seconds (grace) so the
   // play feed can be read before the clock resumes.
-  const TURN_MS = 30000;
+  const turnMs = () => ((R.room && R.room.turnSeconds) || R.turnSeconds || 30) * 1000;
   const PLAY_GRACE_MS = 4000;
   function turnFrac() {
     if (!R.timerEnd) return 1;
@@ -840,7 +955,7 @@
     if (R.graceUntil && Date.now() < R.graceUntil) {
       R.timerEnd += 200; // matches the UI loop tick
     }
-    return Math.max(0, Math.min(1, (R.timerEnd - Date.now()) / TURN_MS));
+    return Math.max(0, Math.min(1, (R.timerEnd - Date.now()) / turnMs()));
   }
 
   function applyTurnRing(ringEl, secsEl, seatEl, isTurn, isMine) {
@@ -853,7 +968,7 @@
     if (isMine) {
       if (secsEl) {
         secsEl.hidden = !isTurn;
-        if (isTurn) secsEl.textContent = Math.ceil(turnFrac() * (TURN_MS / 1000));
+        if (isTurn) secsEl.textContent = Math.ceil(turnFrac() * (turnMs() / 1000));
       }
       if (seatEl) seatEl.classList.toggle("racing", isTurn && frac < 1 / 3);
     }
@@ -868,7 +983,7 @@
       stopTurnTimer();
       return;
     }
-    if (!R.timerEnd) R.timerEnd = Date.now() + TURN_MS;
+    if (!R.timerEnd) R.timerEnd = Date.now() + turnMs();
     const frozen = R.graceUntil && Date.now() < R.graceUntil;
     applyTurnRing(ring, secsEl, seat, myTurn, true);
     // expiry can't fire during the grace pause
@@ -978,7 +1093,8 @@
   let pendingWild = null;
 
   function wireOnce() {
-    $("createRoomBtn").addEventListener("click", createRoom);
+    wireCreateOptions();
+    $("createRoomBtn").addEventListener("click", () => createRoom().catch(() => {}));
     const inviteBtn = $("inviteBtn");
     if (inviteBtn) {
       inviteBtn.addEventListener("click", async () => {
@@ -991,7 +1107,14 @@
         } catch (e) { /* user dismissed share sheet */ }
       });
     }
-    $("joinRoomBtn").addEventListener("click", () => joinRoom($("joinCode").value.trim().toUpperCase()));
+    $("joinRoomBtn").addEventListener("click", () => {
+      const code = $("joinCode").value.trim().toUpperCase();
+      if (!code) { $("roomsMsg").textContent = "Enter the room code first"; return; }
+      joinRoom(code).catch(() => {});
+    });
+    $("joinCode").addEventListener("keydown", (e) => { if (e.key === "Enter") $("joinRoomBtn").click(); });
+    const inviteFriendsBtn = $("inviteFriendsBtn");
+    if (inviteFriendsBtn) inviteFriendsBtn.addEventListener("click", () => { if (window.Social) window.Social.open({ invite: true }); });
     $("roomsBackBtn").addEventListener("click", leaveRoomScreen);
     $("leaveRoomBtn").addEventListener("click", leaveRoom);
     $("readyBtn").addEventListener("click", async () => {
@@ -1008,6 +1131,15 @@
     // chat events
     $("chatFab").addEventListener("click", () => setChatOpen(!R.chatOpen));
     $("chatClose").addEventListener("click", () => setChatOpen(false));
+    const quick = $("chatQuick");
+    if (quick) quick.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-q]");
+      if (!btn || !R.room) return;
+      try {
+        await api("rooms/chat", { method: "POST", body: { code: R.room.code, body: btn.dataset.q } });
+        refreshChat();
+      } catch (err) { toast(err.message, "bad"); }
+    });
     $("chatForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const input = $("chatInput");
@@ -1058,6 +1190,8 @@
   }
 
   function leaveRoomScreen() {
+    stopRoomsTimer();
+    $("rooms").classList.remove("active");
     $("roomScreen").classList.remove("active");
     $("home").classList.add("active");
     if (window.Game && window.Game.onAuthRefresh) window.Game.onAuthRefresh();
@@ -1086,11 +1220,18 @@
     refreshRooms,
     leaveRoomScreen,
     toast,
-    openRooms: () => {
+    openRooms: (pane) => {
       $("home").classList.remove("active");
       $("rooms").classList.add("active");
-      refreshRooms();
+      setRoomsPane(pane || "browse");
+      startRoomsTimer();
     },
+    joinRoom,
+    createRoom,
+    enterRoom,
+    get room() { return R.room; },
+    get players() { return R.players; },
+    get roomStatus() { return R.roomStatus; },
   };
 
   // deep link: ?join=CODE auto-joins after sign-in

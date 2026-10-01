@@ -1,0 +1,337 @@
+/* ============================================================
+   Friends, invites, room options and notifications.
+   Layout stays on the existing grid/flex system; this file only
+   adds the new surfaces and skins them like the rest of the world.
+   ============================================================ */
+
+/* ---------- notification banners ---------- */
+.notif-stack {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 20px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 300;
+  pointer-events: none;
+}
+
+.notif {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #fffef8, #e7f6ff);
+  color: #14385c;
+  border: 4px solid #fff;
+  border-radius: 20px;
+  box-shadow: 0 5px 0 rgba(20, 70, 120, 0.16), 0 16px 30px rgba(10, 40, 80, 0.28);
+  animation: notifIn 0.34s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+
+.notif.out { opacity: 0; transform: translateY(-14px); transition: opacity 0.25s, transform 0.25s; }
+
+@keyframes notifIn {
+  from { opacity: 0; transform: translateY(-24px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.notif-icon { font-size: 1.6rem; line-height: 1; }
+.notif-body { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.82rem; line-height: 1.25; }
+.notif-body b { font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-body span { color: #4d7594; font-weight: 700; }
+.notif-actions { display: flex; gap: 6px; margin-left: auto; }
+
+/* ---------- shared small controls ---------- */
+.mini-btn {
+  min-height: 38px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  border-radius: 14px;
+  width: auto;
+}
+
+.mini-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- dock: five buttons, with a request badge ---------- */
+.dock { grid-template-columns: repeat(5, 1fr); }
+.dock-btn { position: relative; }
+.dock-btn#friendsBtn::before { content: "👥"; }
+
+.dock-badge {
+  position: absolute;
+  top: 2px;
+  right: 12%;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e23b32;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 14px;
+  text-align: center;
+  animation: badgePop 1.6s ease-in-out infinite;
+}
+
+@keyframes badgePop { 50% { transform: scale(1.18); } }
+
+/* ---------- rooms screen ---------- */
+.rooms-head-right { display: flex; align-items: center; gap: 8px; }
+
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 3px solid #fff;
+  border-radius: 18px;
+}
+
+.seg-btn {
+  flex: 1;
+  min-height: 42px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #245074;
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.seg-btn.on {
+  background: linear-gradient(180deg, #ffe56a, #ffc107);
+  color: #6a3e00;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.75), 0 3px 0 #d09000;
+}
+
+.rooms-tabs { margin: 0.2rem 0 0.6rem; }
+.rooms-inner { gap: 0.55rem; }
+.rooms-pane[hidden] { display: none; }
+.rooms-pane { display: flex; flex-direction: column; gap: 0.5rem; text-align: left; }
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  text-shadow: 0 2px 0 #1a6aaa;
+  font-size: 1rem;
+}
+
+.create-card { display: flex; flex-direction: column; gap: 0.85rem; text-align: left; }
+.opt { display: flex; flex-direction: column; gap: 0.4rem; }
+.opt > label { font-weight: 900; font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase; color: #2a7ab8; }
+.opt .seg { background: rgba(58, 160, 255, 0.12); border-color: #d5ecff; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  border: 3px solid #d5ecff;
+  background: #fff;
+  color: #14385c;
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chip.on {
+  border-color: #fff;
+  background: linear-gradient(180deg, #ffe56a, #ffc107);
+  color: #6a3e00;
+  box-shadow: 0 3px 0 #d09000;
+}
+
+#roomAnte { max-width: 9rem; }
+.create-sum { min-height: 2.4em; color: #3d6f96; }
+
+.room-row { flex-wrap: nowrap; }
+.room-row.closed { opacity: 0.72; }
+.room-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.room-top { display: flex; align-items: center; gap: 8px; }
+.room-host { flex: none; font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.room-state {
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.room-state.open { background: #1e9a32; }
+.room-state.live { background: #e09400; }
+
+.room-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.room-row.empty { gap: 10px; flex-wrap: wrap; text-align: center; padding: 1rem; }
+
+/* ---------- lobby ---------- */
+.waiting .lobby-head { gap: 0.4rem; }
+#inviteFriendsBtn[hidden] { display: none; }
+
+/* ---------- chat extras ---------- */
+.chat-quick { display: flex; gap: 6px; padding: 6px 10px 0; overflow-x: auto; }
+
+.chat-quick button {
+  flex: none;
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: rgba(58, 160, 255, 0.14);
+  color: #14385c;
+  font-weight: 900;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.chat-quick button:active { transform: scale(0.92); }
+
+/* ---------- friends panel ---------- */
+.friends-modal {
+  width: min(460px, 96vw);
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+  padding: 1.1rem 1rem 1rem;
+}
+
+.friends-head { display: flex; align-items: center; justify-content: space-between; }
+.friends-head h3 { margin: 0; }
+
+.invite-banner {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 14px;
+  background: rgba(30, 154, 50, 0.14);
+  color: #1b6b2b;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.friend-add { display: flex; gap: 8px; }
+.friend-add input { flex: 1; min-width: 0; min-height: 46px; }
+.friend-add .btn { min-width: 76px; }
+.friend-msg { min-height: 1.3em; margin: 0; font-weight: 800; color: #3d6f96; }
+.friend-msg.good { color: #1e9a32; }
+.friend-msg.bad { color: #e23b32; }
+
+.friends-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 80px;
+}
+
+.friends-scroll h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #2a7ab8;
+}
+
+.f-count { margin-left: 6px; color: #4d7594; letter-spacing: 0; text-transform: none; }
+.f-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.f-empty { margin: 0.2rem 0; color: #4d7594; font-size: 0.85rem; }
+
+.f-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 3px solid #e1f1ff;
+  border-radius: 16px;
+}
+
+.f-row.online { border-color: #bdeccb; }
+
+.f-avatar {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #8fd0ff, #3aa0ff);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.85rem;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 0 rgba(20, 80, 140, 0.25);
+}
+
+.f-dot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #9db4c6;
+  border: 3px solid #fff;
+}
+
+.f-row.online .f-dot { background: #2ecc4a; box-shadow: 0 0 0 0 rgba(46, 204, 74, 0.6); animation: presence 2s infinite; }
+
+@keyframes presence {
+  70% { box-shadow: 0 0 0 7px rgba(46, 204, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 204, 74, 0); }
+}
+
+.f-info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.f-info b { color: #14385c; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-info small { color: #6b8ba5; font-weight: 800; font-size: 0.72rem; }
+.f-row.online .f-info small { color: #1e9a32; }
+.f-actions { display: flex; gap: 6px; flex: none; }
+.f-remove { min-width: 38px; padding: 0 0.5rem; }
+
+/* ---------- join-with-code prompt ---------- */
+.code-modal { width: min(380px, 94vw); text-align: center; display: flex; flex-direction: column; gap: 0.7rem; }
+.code-modal h3 { margin: 0; }
+.code-big { width: 100%; font-size: 2rem; min-height: 64px; letter-spacing: 0.4em; padding-left: 0.4em; }
+.code-msg { min-height: 1.3em; margin: 0.3rem 0; color: #e23b32; font-weight: 800; }
+.code-modal .over-actions { display: flex; gap: 8px; justify-content: center; }
+
+/* the old chat/toast stack sits under notifications */
+html.w3d .notif { backdrop-filter: none; }
+
+/* wide screens and landscape phones: options sit side by side */
+@media (min-width: 640px) {
+  .rooms-inner { width: min(720px, 100%); }
+  .create-card { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem 1.1rem; }
+  .create-card > .create-sum,
+  .create-card > .btn,
+  .create-card > .hint { grid-column: 1 / -1; }
+}

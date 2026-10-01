@@ -8,7 +8,9 @@
     "dev": "node server.js",
     "start": "node server.js",
     "build": "node scripts/build.mjs",
-    "bundle": "esbuild src/world3d.js --bundle --minify --format=iife --outfile=vendor/world3d.js --log-level=warning"
+    "bundle": "esbuild src/world3d.js --bundle --minify --format=iife --outfile=vendor/world3d.js --log-level=warning",
+    "dev:local": "node --import ./scripts/dev-db/register.mjs server.js",
+    "test": "node --import ./scripts/dev-db/register.mjs --experimental-test-module-mocks --test test/*.test.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0"
@@ -17,6 +19,7 @@
     "node": ">=19"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "esbuild": "^0.28.2",
     "three": "^0.186.1"
   }

@@ -122,6 +122,35 @@ export async function ensureSchema() {
     )
   `;
 
+  await sql`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS turn_seconds INTEGER NOT NULL DEFAULT 30`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS friendships (
+      id           SERIAL PRIMARY KEY,
+      requester_id INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      addressee_id INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status       TEXT        NOT NULL DEFAULT 'pending',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (requester_id, addressee_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS friendships_addressee_idx ON friendships (addressee_id)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id           SERIAL PRIMARY KEY,
+      user_id      INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind         TEXT        NOT NULL,
+      from_user_id INTEGER,
+      from_name    TEXT        NOT NULL DEFAULT '',
+      room_code    TEXT,
+      is_read      BOOLEAN     NOT NULL DEFAULT false,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, id)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS room_chat (
       id         SERIAL PRIMARY KEY,
@@ -273,11 +302,11 @@ export async function recordResult(userId, won) {
 }
 
 // ---------- rooms ----------
-export async function createRoom({ code, hostId, ante, isPublic, maxPlayers }) {
+export async function createRoom({ code, hostId, ante, isPublic, maxPlayers, turnSeconds }) {
   const sql = getSql();
   const [row] = await sql`
-    INSERT INTO rooms (code, host_id, ante, is_public, max_players)
-    VALUES (${code}, ${hostId}, ${ante}, ${isPublic}, ${maxPlayers || 4})
+    INSERT INTO rooms (code, host_id, ante, is_public, max_players, turn_seconds)
+    VALUES (${code}, ${hostId}, ${ante}, ${isPublic}, ${maxPlayers || 4}, ${turnSeconds || 30})
     RETURNING *
   `;
   return row;
@@ -287,14 +316,48 @@ export async function listPublicRooms() {
   const sql = getSql();
   return sql`
     SELECT r.id, r.code, r.status, r.ante, r.max_players AS "maxPlayers",
-           (SELECT COUNT(*)::int FROM room_players rp WHERE rp.room_id = r.id) AS "playerCount",
+           r.turn_seconds AS "turnSeconds",
+           (SELECT COUNT(*)::int FROM room_players rp
+              JOIN users pu ON pu.id = rp.user_id
+              WHERE rp.room_id = r.id AND NOT starts_with(pu.username, 'BOT_')) AS "playerCount",
            h.username AS "hostName"
     FROM rooms r
     JOIN users h ON h.id = r.host_id
     WHERE r.is_public = true AND r.status IN ('lobby', 'playing')
-    ORDER BY r.created_at DESC
-    LIMIT 30
+    ORDER BY (r.status = 'lobby') DESC, r.created_at DESC
+    LIMIT 40
   `;
+}
+
+// Rooms nobody is using any more. Runs opportunistically from list/create, so
+// no cron is needed. Cascades remove players and chat.
+export async function sweepStaleRooms() {
+  const sql = getSql();
+  await sql`
+    DELETE FROM rooms r
+    WHERE (r.status = 'lobby' AND r.updated_at < now() - INTERVAL '30 minutes')
+       OR (r.status = 'finished' AND r.updated_at < now() - INTERVAL '10 minutes')
+       OR (r.status = 'playing' AND r.updated_at < now() - INTERVAL '60 minutes')
+       OR (r.created_at < now() - INTERVAL '1 minute' AND NOT EXISTS (
+            SELECT 1 FROM room_players rp JOIN users u ON u.id = rp.user_id
+            WHERE rp.room_id = r.id AND NOT starts_with(u.username, 'BOT_')))
+  `;
+}
+
+export async function roomsOfUser(userId) {
+  const sql = getSql();
+  return sql`
+    SELECT r.*, h.username AS "hostName"
+    FROM room_players rp
+    JOIN rooms r ON r.id = rp.room_id
+    JOIN users h ON h.id = r.host_id
+    WHERE rp.user_id = ${userId}
+  `;
+}
+
+export async function touchUser(userId) {
+  const sql = getSql();
+  await sql`UPDATE users SET last_seen = now() WHERE id = ${userId}`;
 }
 
 export async function findRoomByCode(code) {
@@ -330,7 +393,8 @@ export async function joinRoomPlayer(roomId, userId, seat) {
 export async function roomPlayers(roomId) {
   const sql = getSql();
   return sql`
-    SELECT rp.seat, rp.is_ready AS "ready", u.id, u.username, u.coins
+    SELECT rp.seat, rp.is_ready AS "ready", u.id, u.username, u.coins,
+           (u.last_seen IS NOT NULL AND u.last_seen > now() - INTERVAL '25 seconds') AS "online"
     FROM room_players rp JOIN users u ON u.id = rp.user_id
     WHERE rp.room_id = ${roomId}
     ORDER BY rp.seat
