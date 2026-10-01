@@ -559,6 +559,13 @@
         el.style.setProperty("--fan-rot", ((i - (hand.length - 1) / 2) * Math.min(5, 40 / Math.max(hand.length, 1))) + "deg");
         el.style.setProperty("--fan-y", Math.abs(i - (hand.length - 1) / 2) * 4 + "px");
         el.addEventListener("click", () => playCardClick(i, el));
+        // anime.js selection lift (presentation only — transform/opacity)
+        el.addEventListener("pointerdown", () => {
+          if (window.Game && window.Game.liftCard) window.Game.liftCard(el);
+        });
+        const release = () => { if (window.Game && window.Game.dropCard) window.Game.dropCard(el); };
+        el.addEventListener("pointerup", release);
+        el.addEventListener("pointercancel", release);
         ph.appendChild(el);
       }
       el.classList.toggle("playable", can);

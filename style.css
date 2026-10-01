@@ -44,6 +44,32 @@
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --pile-label-h: 0.75rem;
+
+  /* ---------- spacing scale (responsive UI spec) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* ---------- type scale ---------- */
+  --text-xs: clamp(10px, 2.5vw, 12px);
+  --text-sm: clamp(12px, 3vw, 14px);
+  --text-md: clamp(14px, 3.5vw, 17px);
+  --text-lg: clamp(17px, 4vw, 22px);
+
+  /* ---------- card system: ONE ratio / radius / shadow for every card ---------- */
+  --card-ratio: 1.5;
+  --card-radius: 12px;
+  --card-rim: 2px;
+  --card-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.16),
+    0 4px 10px rgba(0, 0, 0, 0.26);
+
+  /* ---------- layout regions ---------- */
+  --game-max-w: 1200px;
+  --gutter: var(--space-3);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -80,7 +106,8 @@ body {
   background-position: 0 0, 30px 40px, 70px 20px, 40px 80px;
   pointer-events: none;
   z-index: 0;
-  animation: lightDrift 12s ease-in-out infinite;
+  /* static: the drifting light was a constant full-screen repaint that never
+     carried information */
 }
 
 /* full-screen special-card FX layer */
@@ -153,7 +180,14 @@ body {
 }
 
 .screen { position: relative; z-index: 1; display: none; height: 100%; height: 100dvh; }
-.screen.active { display: flex; flex-direction: column; }
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  /* safe area: the hand and bottom controls must never collide with the
+     home indicator / Android nav bar / browser chrome */
+  padding-top: max(10px, var(--sat));
+  padding-bottom: max(10px, var(--sab));
+}
 /* native-app feel: no double-tap zoom delay, no long-press callout menus */
 .screen, .table, .hand, .seat, .center-zone { touch-action: manipulation; -webkit-touch-callout: none; }
 .table, .hand, .seat { user-select: none; -webkit-user-select: none; }
@@ -257,16 +291,24 @@ body {
 .brand-cards .bc.yellow { background: var(--accent-yellow); color: #5a3a00; transform: translate(-50%, -50%) rotate(6deg); }
 .brand-cards .bc.green { background: var(--accent-green); transform: translate(-50%, -50%) rotate(18deg) translateX(16px); }
 
+/* UNO is prominent ONLY when the game state calls for it (one card left).
+   The idle state stays in the layout — just quiet — so nothing ever shifts. */
 .btn-uno {
   background: linear-gradient(180deg, #ffd84d, #f0a929);
   color: #5a3a00;
   font-weight: 900;
   letter-spacing: 0.06em;
   min-width: 96px;
-  box-shadow: 0 6px 16px rgba(240, 169, 41, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  opacity: 0.32;
+  filter: grayscale(0.8);
+  box-shadow: 0 2px 6px rgba(240, 169, 41, 0.2);
 }
 
-.btn-uno:not(:disabled) { animation: unoBreathe 1.8s ease-in-out infinite; }
+.btn-uno:not(:disabled) {
+  opacity: 1;
+  filter: none;
+  animation: unoBreathe 1.8s ease-in-out infinite;
+}
 
 /* UNO! moment: button erupts while you're on your last card */
 .btn-uno.uno-shout {
@@ -593,7 +635,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(0.4rem + var(--sat)) 0.7rem 0.4rem;
+  padding: var(--space-2) var(--space-3);
   background: linear-gradient(180deg, rgba(9, 74, 124, 0.92), rgba(9, 74, 124, 0.55));
   border-bottom: 2px solid rgba(255, 255, 255, 0.22);
   gap: 0.5rem;
@@ -604,13 +646,9 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .round-chip b { color: var(--text); }
 
 /* ---------- table ---------- */
+/* the felt shell: visuals only. LAYOUT lives in the region grid below. */
 .table {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  /* hero-corner layout: strict zones, no overlap. Side gutters hold avatars. */
-  padding: calc(0.55rem + var(--sat)) 0.6rem calc(0.6rem + var(--sab));
   min-height: 0;
   position: relative;
   background:
@@ -705,33 +743,21 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 /* multiplayer seats line up in a clean wrapping row */
 #mpOpponents { flex-direction: row; flex-wrap: wrap; gap: 0.45rem; }
 
-/* compact seat: avatar + name + count, tiny footprint, zero overlap */
+/* compact seat: avatar + name + count. One clean rule — no blur (expensive on
+   mid-range phones), softer border, less visual noise around the cards. */
 .seat {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  background: linear-gradient(180deg, rgba(13, 41, 66, 0.85), rgba(7, 26, 45, 0.85));
-  border: 1px solid var(--panel-border);
+  gap: var(--space-2);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  padding: 0.22rem 0.7rem 0.22rem 0.22rem;
-  backdrop-filter: blur(4px);
-  transition: box-shadow var(--t-med), border-color var(--t-med), transform var(--t-med);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   max-width: 100%;
+  transition: box-shadow var(--t-med), border-color var(--t-med);
 }
 
 .seat .seat-info { min-width: 62px; }
-
-.seat {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 999px;
-  padding: 0.3rem 0.9rem 0.3rem 0.3rem;
-  backdrop-filter: blur(6px);
-  transition: box-shadow var(--t-med), border-color var(--t-med), transform var(--t-med);
-}
 
 /* The active seat is emphasised with PAINT ONLY — identical geometry, so
    nothing reflows, resizes or shifts when the turn moves. (The old version
@@ -1008,23 +1034,34 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .profile-stats { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ---------- YOUR TURN banner ---------- */
+/* ---------- turn indicator ----------
+   Compact chip floating over the TABLE region: it answers "whose turn is it?"
+   (hierarchy #1) without an oversized banner, and it can never overlap the
+   opponent row because it lives inside .center-zone.
+   Centred with margin (not transform) so anime.js owns transform freely. */
 .turn-banner {
   position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 45;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: fit-content;
+  z-index: 12;
   font-weight: 900;
-  font-size: clamp(0.95rem, 4vw, 1.3rem);
-  letter-spacing: 0.18em;
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
   color: #06240f;
   background: linear-gradient(180deg, var(--accent-green), #1f9e3e);
-  border: 2px solid rgba(255, 255, 255, 0.75);
   border-radius: 999px;
-  padding: 0.4rem 1.4rem;
-  box-shadow: 0 0 0 3px rgba(53, 216, 91, 0.25), 0 10px 26px rgba(0, 0, 0, 0.5);
+  padding: 0.18rem 0.7rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
   pointer-events: none;
+  animation: turnChip 1.8s ease-in-out infinite;
+}
+
+@keyframes turnChip {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(53, 216, 91, 0.45), 0 2px 8px rgba(0, 0, 0, 0.28); }
+  70% { box-shadow: 0 0 0 8px rgba(53, 216, 91, 0), 0 2px 8px rgba(0, 0, 0, 0.28); }
 }
 
 /* ---------- special card identity (visual only) ---------- */
@@ -1070,10 +1107,9 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   align-items: flex-end;
   justify-content: center;
   gap: clamp(1.2rem, 7vw, 3.5rem);
-  flex: 1;
   min-height: 0;
   position: relative;
-  padding: 0.5rem 0;
+  padding: var(--space-4) 0 var(--space-1);
   perspective: 1100px; /* true 3D stage for the piles */
 }
 
@@ -1536,11 +1572,26 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .card.back .corner { display: none; }
 
 /* ---------- player hand ---------- */
-.player-zone { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+/* The player zone is a grouping wrapper only — its children are the real
+   regions (action row / hand / player status) in the parent grid. */
+.player-zone { display: contents; }
 
-.action-row { display: flex; align-items: center; gap: 0.9rem; min-height: 48px; }
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 46px;
+  padding-inline: var(--space-2);
+}
 
-.draw-hint { color: var(--muted); font-size: 0.8rem; font-weight: 700; text-align: center; }
+.draw-hint {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.3;
+}
 
 .hand {
   display: flex;
@@ -1688,19 +1739,29 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .hand .card.playable {
   cursor: grab;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(255, 216, 77, 0.55);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3), 0 0 0 var(--card-rim) rgba(255, 216, 77, 0.5);
 }
 
-/* your turn: player seat blinks (seat has turnGlow); cards get a soft lift cue */
-.hand.my-turn .card.playable { box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(255, 216, 77, 0.75); }
+/* your turn: the seat has the gold pulse; playable cards keep a soft rim */
+.hand.my-turn .card.playable {
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3), 0 0 0 var(--card-rim) rgba(255, 216, 77, 0.7);
+}
+
+/* Selection: short lift + scale + glow. The fan rotation is preserved, so
+   picking a card never disturbs the rest of the hand. */
+.hand .card.selected,
+.hand .card.playable:active {
+  transform: translateY(-14px) rotate(var(--fan-rot, 0deg)) translateY(var(--fan-y, 0px)) scale(1.04);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.42), 0 0 0 3px rgba(255, 216, 77, 0.85);
+  z-index: 30;
+}
 
 @media (hover: hover) and (pointer: fine) {
   .hand .card.playable:hover {
-    transform: translateY(-18px) rotate(0deg) scale(1.07);
-    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(255, 216, 77, 0.85);
-    z-index: 99;
+    transform: translateY(-14px) rotate(var(--fan-rot, 0deg)) translateY(var(--fan-y, 0px)) scale(1.04);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.42), 0 0 0 3px rgba(255, 216, 77, 0.85);
+    z-index: 30;
   }
-  .hand .card.playable:active { transform: translateY(-10px) rotate(0deg) scale(1.02); }
 }
 
 .hand .card.locked { filter: brightness(0.6) saturate(0.75); cursor: not-allowed; }
@@ -2221,6 +2282,109 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 .hand.shake { animation: handShake 0.4s ease; }
 
+/* ============================================================
+   GAMEPLAY LAYOUT SYSTEM
+   CSS decides where every element lives. Anime.js only ever
+   animates state changes (transform/opacity) inside a region.
+   Region order is also the visual hierarchy the player reads:
+     1 opponents  2 table (turn chip + piles)  3 action
+     4 hand       5 player status
+   ============================================================ */
+#game > .table,
+#mpGame {
+  display: grid;
+  flex: 1; /* fill the screen below the topbar (multiplayer wrapper) */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  row-gap: var(--space-2);
+  align-content: stretch;
+  /* controlled maximum width: the mobile UI is never stretched across a
+     1440px monitor — it stays centred */
+  width: min(100%, var(--game-max-w));
+  margin-inline: auto;
+  padding: var(--space-2) var(--gutter) var(--space-3);
+  min-height: 0;
+  position: relative;
+}
+
+/* ---- region placement (explicit, so nothing can drift) ---- */
+#game > .table > .opponent-zone,
+#mpGame > .opponent-zone { grid-row: 1; }
+
+#game > .table > .center-zone,
+#mpGame > .center-zone { grid-row: 2; }
+
+#game > .table > .player-zone > .action-row,
+#mpGame > .player-zone > .action-row { grid-row: 3; }
+
+#game > .table > .player-zone > .hand,
+#mpGame > .player-zone > .hand { grid-row: 4; }
+
+#game > .table > .player-zone > .seat.you,
+#mpGame > .player-zone > .seat.you { grid-row: 5; }
+
+/* region 5 — player status gets its own centred block below the hand */
+.seat.you {
+  width: min(92%, 420px);
+  margin-inline: auto;
+  justify-content: center;
+}
+
+/* region 4 — the hand can never spill outside the viewport */
+.hand {
+  padding-inline: var(--space-1);
+  max-width: 100%;
+}
+
+/* ---------- landscape: rebalance horizontal vs vertical space ---------- */
+@media (orientation: landscape) and (max-height: 620px) {
+  #game > .table,
+  #mpGame {
+    grid-template-columns: minmax(140px, 32%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+    padding: var(--space-1) var(--space-3) var(--space-2);
+  }
+  /* opponents stack down the left edge, like a real table */
+  #game > .table > .opponent-zone,
+  #mpGame > .opponent-zone {
+    grid-row: 1 / -1;
+    grid-column: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-1);
+    min-height: 0;
+  }
+  #game > .table > .center-zone,
+  #mpGame > .center-zone { grid-row: 1; grid-column: 2; }
+  #game > .table > .player-zone > .action-row,
+  #mpGame > .player-zone > .action-row { grid-row: 2; grid-column: 2; }
+  #game > .table > .player-zone > .hand,
+  #mpGame > .player-zone > .hand { grid-row: 3; grid-column: 2; }
+  #game > .table > .player-zone > .seat.you,
+  #mpGame > .player-zone > .seat.you { grid-row: 4; grid-column: 2; }
+  .seat.you { width: min(70%, 380px); }
+  .center-zone { padding-top: var(--space-3); }
+  /* the dealer is pure decoration and the one thing that pushed the piles
+     out of alignment when vertical space is tight */
+  .dealer { display: none; }
+}
+
+/* ---------- tablet + desktop: roomier, still bounded ---------- */
+@media (min-width: 768px) {
+  :root {
+    --card-w: clamp(64px, calc((100vw - 48px) / 9), 96px);
+    --gutter: var(--space-5);
+  }
+  .opponent-zone { gap: var(--space-3); }
+  .seat { gap: var(--space-3); padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2); }
+  .seat-name { font-size: var(--text-sm); }
+  .seat-cards { font-size: var(--text-xs); }
+  .center-zone { gap: var(--space-6); }
+  .action-row { gap: var(--space-4); }
+}
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .btn-uno:not(:disabled),
@@ -2228,8 +2392,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .seat-ring.radar::after,
   .color-ring.show,
   .room-light,
-  .pile-group,
-  .discard,
+  .turn-banner,
   .table.table-ring::before,
   .btn-primary::after { animation: none !important; }
   .card.ghost { display: none !important; }
@@ -2264,20 +2427,16 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   .sneak-hand .card { width: 17px; height: 24px; margin-left: -6px; }
   .sneak-hand .card .val { font-size: 7.5px; }
   .sneak-badge { font-size: 0.36rem; padding: 0 4px; margin-left: 0.2rem; }
-  /* dealer scales down and never covers the piles */
-  .dealer { width: 50px; height: 66px; margin-bottom: 0.3rem; }
-  .dealer .d-head { width: 24px; height: 24px; top: 8px; }
-  .dealer .d-hair { width: 27px; top: 3px; }
-  .dealer .d-body { width: 32px; height: 27px; }
-  .dealer .d-arm { top: 35px; width: 24px; }
-  .dealer .d-deck { left: calc(50% + 17px); top: 30px; width: 16px; height: 22px; }
-  .dealer .d-tag { font-size: 0.42rem; }
+  /* On phones the dealer is the one decorative element that competes with the
+     table: it stole ~70px of height and pushed the piles off the baseline.
+     It is pure decoration, so it only appears on tablet and up. */
+  .dealer { display: none; }
   /* piles stay thumb-sized and the table breathes; 3D felt flattens a bit */
-  .center-zone { gap: clamp(0.9rem, 5vw, 2rem); }
+  .center-zone { gap: clamp(0.9rem, 5vw, 2rem); padding-top: var(--space-3); }
   .center-zone::before { transform: translate(-50%, -50%) rotateX(30deg) scale(1.1); height: min(74%, 260px); }
-  .action-row { gap: 0.6rem; min-height: 44px; }
+  .action-row { gap: var(--space-2); min-height: 42px; }
   .btn-uno { min-width: 84px; }
-  .draw-hint { font-size: 0.7rem; }
+  .draw-hint { font-size: var(--text-xs); }
   /* topbar stays on one line, nothing wraps or overlaps */
   .topbar { gap: 0.35rem; }
   .round-chip { font-size: 0.7rem; }
@@ -2294,8 +2453,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 
 /* ---------- landscape phones: use width, protect height ---------- */
 @media (max-height: 480px) and (orientation: landscape) {
-  .topbar { min-height: 40px; padding-top: calc(0.25rem + var(--sat)); padding-bottom: 0.25rem; }
-  .table { padding-top: 0.3rem; padding-bottom: calc(0.3rem + var(--sab)); }
+  .topbar { min-height: 40px; padding-top: var(--space-1); padding-bottom: var(--space-1); }
   .opponent-hand { min-height: 34px; }
   .dealer { width: 40px; height: 52px; margin-bottom: 0.15rem; }
   .dealer .d-head { width: 19px; height: 19px; top: 6px; }
@@ -2320,41 +2478,31 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .seat-ring.radar::after { animation-duration: 3.2s; }
 .fx-burst .fx-main, .fx-burst .fx-sub { animation-duration: 1.6s; }
 
-/* ---------- ambient life: drifting light + floating piles ---------- */
-@keyframes lightDrift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.75; }
-  50% { transform: translate3d(6%, 4%, 0) scale(1.12); opacity: 1; }
-}
-
-.room-light { animation: lightDrift 12s ease-in-out infinite; }
-
-@keyframes pileFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-/* float the wrappers, not the piles, so hover/drag transforms still work */
-.pile-group { animation: pileFloat 4.2s ease-in-out infinite; }
-.discard { animation: pileFloat 4.2s ease-in-out 0.6s infinite; }
+/* ---------- ambient life: static party lights ----------
+   The drifting light and the floating piles were constant animations that
+   never carried information (and the piles MOVED while you aimed at them).
+   Both are now static: cheaper on mid-range phones, calmer to play. */
 
 .btn-primary {
   position: relative;
   overflow: hidden;
 }
 
+/* shimmer travels on the compositor (transform) instead of animating `left`,
+   which forced a layout pass on every frame */
 .btn-primary::after {
   content: "";
   position: absolute;
   top: 0;
-  left: -80%;
+  left: 0;
   width: 60%;
   height: 100%;
   background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-  transform: skewX(-18deg);
+  transform: translateX(-180%) skewX(-18deg);
   animation: btnShimmer 3.8s ease-in-out infinite;
 }
 
 @keyframes btnShimmer {
-  0%, 55% { left: -80%; }
-  75%, 100% { left: 130%; }
+  0%, 55% { transform: translateX(-180%) skewX(-18deg); }
+  75%, 100% { transform: translateX(320%) skewX(-18deg); }
 }
