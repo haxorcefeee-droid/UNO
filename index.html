@@ -145,7 +145,6 @@
 
       <!-- live game (mirrors the vs-bot table) -->
       <div id="mpGame" hidden>
-        <div class="turn-banner" id="mpTurnBanner" hidden>YOUR TURN</div>
         <!-- chat: collapsible panel, bottom-right -->
         <div class="chat" id="mpChat">
           <button class="chat-fab" id="chatFab" type="button" aria-label="Open chat">💬 <span class="chat-unread" id="chatUnread" hidden>0</span></button>
@@ -164,6 +163,7 @@
         <div class="opponent-zone" id="mpOpponents"></div>
 
         <div class="center-zone">
+          <div class="turn-banner" id="mpTurnBanner" hidden>YOUR TURN</div>
           <div class="pile-group">
             <div class="dealer" id="mpDealer" aria-hidden="true">
               <div class="d-hair"></div>
@@ -228,7 +228,6 @@
         </button>
       </div>
     </header>      <main class="table">
-        <div class="turn-banner" id="turnBanner" hidden>YOUR TURN</div>
       <!-- Opponent -->
       <div class="opponent-zone">
         <div class="seat" id="cpuSeat">
@@ -249,8 +248,9 @@
         <div class="opponent-hand" id="opponentHand"></div>
       </div>
 
-      <!-- Center piles -->
+      <!-- Center: turn indicator + the two piles, grouped on one baseline -->
       <div class="center-zone">
+        <div class="turn-banner" id="turnBanner" hidden>YOUR TURN</div>
         <div class="pile-group">
           <div class="dealer" id="dealer" aria-hidden="true">
             <div class="d-hair"></div>

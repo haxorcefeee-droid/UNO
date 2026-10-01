@@ -658,10 +658,15 @@ function flipCardIn(el) {
 function fitHandTo(hand, n) {
   if (!hand) return;
   const vw = document.documentElement.clientWidth || window.innerWidth || 375;
-  // ONE constant card size per viewport — never grows/shrinks with hand count
-  const w = Math.max(46, Math.min(82, Math.floor(vw / 6)));
+  const wide = vw >= 768;
+  // ONE constant card size per layout — never grows/shrinks with hand count
+  const w = wide
+    ? Math.max(64, Math.min(104, Math.floor(vw / 11)))
+    : Math.max(46, Math.min(82, Math.floor(vw / 6)));
   hand.style.setProperty("--card-w", w + "px");
-  const avail = vw - 16;
+  // measure the REAL hand container (capped at 1200px on desktop, not the
+  // viewport width) so the fan overlap is always exact
+  const avail = Math.max(140, (hand.clientWidth || vw) - 8);
   const nSafe = Math.max(n || hand.children.length || 1, 1);
   // the fan OVERLAP grows instead of the cards shrinking: w + (n-1)*w*(1-ov) = avail
   const raw = nSafe > 1 ? 1 - (avail - w) / ((nSafe - 1) * w) : 0;
@@ -674,6 +679,41 @@ function fitHand(n) {
   const room = document.getElementById("roomScreen");
   const hand = room && room.classList.contains("active") ? document.getElementById("mpPlayerHand") : dom.playerHand;
   fitHandTo(hand, n);
+}
+
+/* Card selection (presentation only): a short lift + scale while the card is
+   held. Anime.js animates the STATE CHANGE — transform/opacity only, never
+   layout — and the inline transform is cleared afterwards so CSS (which owns
+   the fan layout) takes back over. */
+function liftCard(el) {
+  if (!el) return;
+  el.classList.add("selected");
+  if (!hasAnime || reducedMotion()) return;
+  const rot = (getComputedStyle(el).getPropertyValue("--fan-rot") || "0deg").trim() || "0deg";
+  anime.remove(el);
+  anime({
+    targets: el,
+    rotate: rot,
+    translateY: [0, -14],
+    scale: [1, 1.04],
+    duration: 180,
+    easing: "easeOutQuad",
+  });
+}
+
+function dropCard(el) {
+  if (!el) return;
+  el.classList.remove("selected");
+  if (!hasAnime || reducedMotion()) return;
+  anime.remove(el);
+  anime({
+    targets: el,
+    translateY: 0,
+    scale: 1,
+    duration: 140,
+    easing: "easeOutQuad",
+    complete: () => { el.style.transform = ""; },
+  });
 }
 
 // the discard pile of the SCREEN THAT IS ACTIVE (multiplayer room vs bot table)
@@ -1225,7 +1265,10 @@ function discardHitTest(x, y) {
 }
 
 function dragCleanup() {
-  if (Drag.el) Drag.el.classList.remove("dragging");
+  if (Drag.el) {
+    Drag.el.classList.remove("dragging");
+    dropCard(Drag.el); // release the selection lift (anime.js, transform only)
+  }
   dom.drawPile.classList.remove("drag-over");
   Drag.active = false;
   Drag.el = null;
@@ -1249,6 +1292,7 @@ dom.playerHand.addEventListener("pointerdown", (e) => {
   Drag.active = true;
   Drag.card = card;
   Drag.el = el;
+  liftCard(el); // anime.js selection lift — transform only, layout untouched
   Drag.startX = e.clientX;
   Drag.startY = e.clientY;
   Drag.moved = false;
@@ -1658,6 +1702,8 @@ window.Game = {
   unoMoment,
   setTableRing,
   waveTable,
+  liftCard,
+  dropCard,
   tossDealer,
   flyFromEl,
   sound: Sound,
