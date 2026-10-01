@@ -463,6 +463,12 @@ function renderAll(opts) {
       ? renderCard(c, { still: true, sneak: true })
       : cardBack({ still: !isNew }); // only a freshly drawn card flips in
     if (isNew) back.classList.add("card-new");
+    const n = state.cpu.length;
+    const mid = (n - 1) / 2;
+    const spread = n <= 1 ? 0 : Math.min(4.5, 24 / (n - 1));
+    const off = i - mid;
+    back.style.setProperty("--fan-rot", (off * spread).toFixed(2) + "deg");
+    back.style.setProperty("--fan-y", (Math.abs(off) * 2.4).toFixed(1) + "px");
     dom.opponentHand.appendChild(back);
   });
   dom.opponentHand.classList.toggle("sneaking", sneaking);
@@ -1764,11 +1770,11 @@ renderAuthUI = function () {
   });
 };
 (function () {
-  document.querySelectorAll("[data-dock]").forEach((btn) => {
+  document.querySelectorAll(".dock-btn[data-dock]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const home = document.getElementById("home");
       if (home) home.dataset.dock = btn.dataset.dock;
-      document.querySelectorAll("[data-dock]").forEach((b) => b.classList.toggle("on", b === btn));
+      document.querySelectorAll(".dock-btn[data-dock]").forEach((b) => b.classList.toggle("on", b === btn));
     });
   });
   const nav = document.getElementById("joinRoomNavBtn");
