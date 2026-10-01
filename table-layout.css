@@ -287,6 +287,14 @@ body {
   transform-origin: 50% 125%;
 }
 
+/* A browser-height desktop must still expose the whole hand. The engine
+   calculates overlap, while this cap owns the visual card scale. */
+@media (min-width: 561px) {
+  .hand {
+    --card-w: clamp(64px, 9vh, 92px) !important;
+  }
+}
+
 /* decorative character portraits stay modest, the cards remain primary */
 .seat-ring,
 .seat-ring svg { width: 52px; height: 52px; }
@@ -308,6 +316,15 @@ body {
 .chat-panel {
   border-radius: 24px;
   border-width: 5px;
+}
+
+.over-modal .save-note {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: center;
+  margin-top: 0.65rem;
 }
 
 @media (orientation: landscape) and (max-height: 620px) {
