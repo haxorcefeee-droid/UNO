@@ -59,6 +59,8 @@
 
 /* ---------- dock: five buttons, with a request badge ---------- */
 .dock { grid-template-columns: repeat(5, 1fr); }
+.home-actions { display: flex; gap: 8px; margin-top: 0.45rem; }
+.home-actions .btn { flex: 1; }
 .dock-btn { position: relative; }
 .dock-btn#friendsBtn::before { content: "👥"; }
 

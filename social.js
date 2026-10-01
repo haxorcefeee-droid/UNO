@@ -445,6 +445,8 @@
   function wire() {
     loadSeen();
     $("friendsBtn").addEventListener("click", () => openPanel());
+    const homeFriends = $("homeFriendsBtn");
+    if (homeFriends) homeFriends.addEventListener("click", () => openPanel());
     $("friendsClose").addEventListener("click", closePanel);
     $("friendsOverlay").addEventListener("click", (e) => { if (e.target === $("friendsOverlay")) closePanel(); });
     $("friendAddForm").addEventListener("submit", addFriend);
