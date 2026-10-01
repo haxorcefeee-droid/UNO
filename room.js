@@ -371,9 +371,18 @@
       if (R.room) R.room.turnSeconds = R.turnSeconds;
       hideError();
 
-      $("roomStatus").textContent = data.room.status;
+      const statusEl = $("roomStatus");
+      if (statusEl) statusEl.textContent = data.room.status;
       $("roomCoins").textContent = data.you.coins;
+      const wallet = $("mpYouWallet");
+      if (wallet) wallet.textContent = data.you.coins;
       $("roomCode").textContent = data.room.code;
+      const pot = $("roomPot");
+      if (pot) {
+        const ante = Number(data.room.ante) || 0;
+        const seats = (data.players && data.players.length) || 0;
+        pot.textContent = ante > 0 ? (ante * Math.max(seats, 1)) + " POT" : "FREE";
+      }
 
       if (data.room.status === "lobby" || (data.room.status === "finished" && !data.game)) {
         show($("waitingPanel"), true);
@@ -469,9 +478,24 @@
       ? "Round over"
       : myTurn
         ? iHavePlays
-          ? "Play a card from your hand"
+          ? "Play a matching card or draw"
           : "No plays — tap the glowing deck!"
         : "Waiting for " + (g.players[g.current] ? g.players[g.current].username : "…");
+    const nightLabel = $("mpNightLabel");
+    const nightCount = $("mpNightCount");
+    const nightTurn = document.querySelector("#mpGame .night-turn");
+    const youState = $("mpYouState");
+    const playableN = (g.players[youSeatIdx].hand || []).filter((c) => playable(c, g)).length;
+    if (nightLabel) {
+      nightLabel.textContent = g.winner != null
+        ? "ROUND OVER"
+        : myTurn
+          ? "YOUR TURN"
+          : (g.players[g.current] ? g.players[g.current].username.toUpperCase() : "WAITING");
+    }
+    if (nightCount) nightCount.textContent = myTurn && g.winner == null ? playableN + " playable" : "";
+    if (nightTurn) nightTurn.classList.toggle("wait", !myTurn || g.winner != null);
+    if (youState) youState.textContent = myTurn && g.winner == null ? "Active" : "Waiting";
 
     // beacon: no playable card on your turn → the deck glows and bounces
     const mpDrawPileEl = $("mpDrawPile");
@@ -613,6 +637,16 @@
         old.remove();
       }
     }
+    if (window.Game && window.Game.cardCaption) {
+      const cap = $("mpDiscardCaption");
+      if (cap) {
+        cap.textContent = window.Game.cardCaption(g.discardTop);
+        if (g.discardTop) {
+          const c = g.discardTop;
+          cap.dataset.color = c.color === "wild" || c.value === "wild" || c.value === "wild4" ? "wild" : c.color;
+        }
+      }
+    }
     const mpRing = $("mpColorRing");
     if (mpRing) {
       const ringCls = g.discardTop ? "color-ring show " + g.activeColor : "color-ring";
@@ -707,7 +741,13 @@
         if (window.Game && window.Game.playSpecialFX && a.card) {
           const v = a.card.value;
           if (v === "draw2") window.Game.playSpecialFX("d2", name + " plays +2");
-          else if (v === "wild4") window.Game.playSpecialFX("w4", name + " plays +4");
+          else if (v === "wild4") {
+            window.Game.playSpecialFX("w4", name + " plays +4");
+            const drewFour = grew && hand.length >= prevHand.length + 4;
+            if (a.seat !== youSeatIdx && drewFour && window.Game.showPenalty) {
+              window.Game.showPenalty({ name: name, color: g.activeColor, canPeek: false });
+            }
+          }
           else if (v === "skip" || v === "reverse") window.Game.playSpecialFX("skip", name + " plays " + (v === "skip" ? "Skip" : "Reverse"));
           else if (v === "wild") window.Game.playSpecialFX("wild", name + " plays Wild");
         }
@@ -1010,6 +1050,11 @@
       if (R.graceUntil && Date.now() < R.graceUntil && R.timerEnd) R.timerEnd += dt;
       const youIdx = R.youSeatIdx;
       applyTurnRing($("mpYouRing"), $("mpYouSeconds"), $("mpYouSeat"), g.current === youIdx, true);
+      const clock = $("mpNightClock");
+      const meter = $("mpNightMeter");
+      const secs = Math.ceil(turnFrac() * (turnMs() / 1000));
+      if (clock) clock.textContent = secs + "s";
+      if (meter) meter.style.width = Math.max(0, Math.min(100, turnFrac() * 100)).toFixed(1) + "%";
       const oppZone = $("mpOpponents");
       if (!oppZone) return;
       const frac = turnFrac();
@@ -1162,6 +1207,17 @@
       });
     });
     $("mpUnoBtn").addEventListener("click", () => toast("UNO!", "good"));
+    const chatJump = $("mpChatJump");
+    if (chatJump) chatJump.addEventListener("click", () => { const fab = $("chatFab"); if (fab) fab.click(); });
+    const mpReact = $("mpNightReact");
+    if (mpReact) mpReact.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-q]");
+      if (!btn || !R.room) return;
+      try {
+        await api("rooms/chat", { method: "POST", body: { code: R.room.code, body: btn.dataset.q } });
+        refreshChat();
+      } catch (err) { toast(err.message, "bad"); }
+    });
 
     document.querySelectorAll(".color-choice").forEach((btn) => {
       btn.addEventListener("click", () => {
