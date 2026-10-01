@@ -15,9 +15,11 @@
   <link rel="stylesheet" href="world.css" />
   <link rel="stylesheet" href="table-layout.css" />
   <link rel="stylesheet" href="world3d.css" />
+  <link rel="stylesheet" href="social.css" />
 </head>
 <body>
   <canvas id="world3d" aria-hidden="true"></canvas>
+  <div class="notif-stack" id="notifStack" aria-live="polite"></div>
   <div class="room-light" aria-hidden="true"></div>
   <div class="fx-layer" aria-hidden="true"></div>
 
@@ -73,6 +75,7 @@
       <nav class="dock" aria-label="Menu">
         <button type="button" class="dock-btn on" data-dock="play">Play</button>
         <button type="button" class="dock-btn" data-dock="ranks">Ranks</button>
+        <button type="button" class="dock-btn" id="friendsBtn">Friends<span class="dock-badge" id="friendsBadge" hidden>0</span></button>
         <button type="button" class="dock-btn" id="homeProfileBtn">Profile</button>
         <button type="button" class="dock-btn" id="rulesBtn">Tutorial</button>
       </nav>
@@ -81,41 +84,88 @@
 
   <!-- ===== ROOMS LOBBY ===== -->
   <section id="rooms" class="screen">
-    <div class="home-inner">
+    <div class="home-inner rooms-inner">
       <div class="rooms-head">
         <h2 class="section-title">Rooms</h2>
-        <button id="roomsBackBtn" class="btn btn-ghost" type="button">Back</button>
+        <div class="rooms-head-right">
+          <div class="coin-chip small">🪙 <b id="roomsCoins">0</b></div>
+          <button id="roomsBackBtn" class="btn btn-ghost" type="button">Back</button>
+        </div>
       </div>
 
-      <div class="home-card">
-        <div class="create-room">
-          <div class="field-row">
-            <div class="field">
-              <label for="roomAnte">Bet amount (🪙)</label>
-              <input id="roomAnte" type="number" min="0" max="500" value="25" inputmode="numeric" />
-            </div>
-            <div class="field">
-              <label for="roomMaxPlayers">Players</label>
-              <select id="roomMaxPlayers">
-                <option value="2">2 players</option>
-                <option value="3">3 players</option>
-                <option value="4" selected>4 players</option>
-              </select>
-            </div>
-          </div>
-          <button id="createRoomBtn" class="btn btn-secondary" type="button">Create room</button>
-        </div>
-        <div class="join-room">
-          <input id="joinCode" maxlength="5" placeholder="CODE" class="code-input" />
-          <button id="joinRoomBtn" class="btn btn-join" type="button">Join</button>
-        </div>
-        <p class="hint" id="roomsMsg"></p>
+      <div class="seg rooms-tabs" role="tablist" aria-label="Rooms">
+        <button type="button" class="seg-btn on" role="tab" data-pane="browse">Available</button>
+        <button type="button" class="seg-btn" role="tab" data-pane="create">Create</button>
+        <button type="button" class="seg-btn" role="tab" data-pane="code">Join code</button>
       </div>
 
-      <div class="home-leaderboard">
-        <h2>Public rooms <span class="db-pill" id="roomsPill">● loading</span></h2>
+      <div class="rooms-pane" data-pane="browse">
+        <div class="pane-head">
+          <b>Open tables <span class="db-pill" id="roomsPill">● loading</span></b>
+          <button id="roomsRefreshBtn" class="btn btn-ghost mini-btn" type="button">Refresh</button>
+        </div>
         <div id="roomsList" class="rooms-list"></div>
       </div>
+
+      <div class="rooms-pane" data-pane="create" hidden>
+        <div class="home-card create-card">
+          <div class="opt">
+            <label for="roomAnte">Coins per game</label>
+            <div class="chip-row" id="anteChips">
+              <button type="button" class="chip" data-v="0">Free</button>
+              <button type="button" class="chip" data-v="10">10</button>
+              <button type="button" class="chip on" data-v="25">25</button>
+              <button type="button" class="chip" data-v="50">50</button>
+              <button type="button" class="chip" data-v="100">100</button>
+              <button type="button" class="chip" data-v="250">250</button>
+            </div>
+            <input id="roomAnte" type="number" min="0" max="500" value="25" inputmode="numeric" aria-label="Custom coins per game" />
+          </div>
+          <div class="opt">
+            <label>Players</label>
+            <div class="seg" id="playerSeg">
+              <button type="button" class="seg-btn" data-v="2">2</button>
+              <button type="button" class="seg-btn" data-v="3">3</button>
+              <button type="button" class="seg-btn on" data-v="4">4</button>
+            </div>
+            <input type="hidden" id="roomMaxPlayers" value="4" />
+          </div>
+          <div class="opt">
+            <label>Turn time</label>
+            <div class="seg" id="turnSeg">
+              <button type="button" class="seg-btn" data-v="15">15s</button>
+              <button type="button" class="seg-btn on" data-v="30">30s</button>
+              <button type="button" class="seg-btn" data-v="45">45s</button>
+              <button type="button" class="seg-btn" data-v="60">60s</button>
+            </div>
+            <input type="hidden" id="roomTurn" value="30" />
+          </div>
+          <div class="opt">
+            <label>Who can see it</label>
+            <div class="seg" id="visSeg">
+              <button type="button" class="seg-btn on" data-v="1">Public</button>
+              <button type="button" class="seg-btn" data-v="0">Code only</button>
+            </div>
+            <input type="hidden" id="roomPublic" value="1" />
+          </div>
+          <p class="hint create-sum" id="createSummary"></p>
+          <button id="createRoomBtn" class="btn btn-secondary btn-wide" type="button">Create room</button>
+          <p class="hint">Creating a room closes any room you were in before.</p>
+        </div>
+      </div>
+
+      <div class="rooms-pane" data-pane="code" hidden>
+        <div class="home-card">
+          <label for="joinCode">Room code</label>
+          <div class="join-room">
+            <input id="joinCode" maxlength="5" placeholder="CODE" class="code-input" autocomplete="off" autocapitalize="characters" />
+            <button id="joinRoomBtn" class="btn btn-join" type="button">Join</button>
+          </div>
+          <p class="hint">Ask your friend for the 5-letter code on their table.</p>
+        </div>
+      </div>
+
+      <p class="hint" id="roomsMsg"></p>
     </div>
   </section>
 
@@ -138,18 +188,40 @@
       <!-- visible failure banner (DB offline, start errors, render errors) -->
       <div class="room-error" id="roomError" hidden></div>
 
+      <!-- chat: collapsible panel, bottom-right (lobby and live game) -->
+        <div class="chat" id="mpChat">
+          <button class="chat-fab" id="chatFab" type="button" aria-label="Open chat">💬 <span class="chat-unread" id="chatUnread" hidden>0</span></button>
+          <div class="chat-panel" id="chatPanel" hidden>
+            <div class="chat-head">
+              <b>Table chat</b>
+              <button class="chat-close" id="chatClose" type="button" aria-label="Close chat">✕</button>
+            </div>
+            <div class="chat-log" id="chatLog"><div class="chat-empty">Say hi to your table 👋</div></div>
+            <div class="chat-quick" id="chatQuick">
+              <button type="button" data-q="👍">👍</button><button type="button" data-q="😂">😂</button><button type="button" data-q="😮">😮</button><button type="button" data-q="🔥">🔥</button><button type="button" data-q="GG">GG</button><button type="button" data-q="Hurry up!">⏱</button>
+            </div>
+            <form class="chat-form" id="chatForm">
+              <input id="chatInput" maxlength="200" placeholder="Type a message…" autocomplete="off" />
+              <button class="btn btn-primary chat-send" type="submit" aria-label="Send" title="Send">➤</button>
+            </form>
+          </div>
+        </div>
+
       <!-- waiting room overlay -->
       <div class="waiting" id="waitingPanel">
         <div class="lobby-head">
           <span class="lobby-chip">🎮 <b>Classic UNO</b></span>
           <span class="lobby-chip">👥 <b id="lobbyMax">4</b> players</span>
+          <span class="lobby-chip">🪙 <b id="lobbyAnte">25</b> per game</span>
+          <span class="lobby-chip">⏱ <b id="lobbyTurn">30</b>s turns</span>
         </div>
         <div class="seat-grid" id="seatGrid"></div>
         <div class="over-actions">
           <button id="readyBtn" class="btn btn-secondary" type="button">Ready</button>
           <button id="startGameBtn" class="btn btn-hero" hidden type="button">Start game</button>
         </div>
-        <button id="inviteBtn" class="btn btn-join btn-wide" type="button">Invite friends</button>
+        <button id="inviteFriendsBtn" class="btn btn-secondary btn-wide" type="button">Invite online friends</button>
+        <button id="inviteBtn" class="btn btn-join btn-wide" type="button">Share invite link</button>
         <p class="hint">Share the code <b id="roomCodeShare">—</b> with friends. Empty seats are filled with bots.</p>
         <div class="wins-panel" id="mpWinsPanel" hidden>
           <b>🏆 Wins this room</b>
@@ -159,21 +231,6 @@
 
       <!-- live game (mirrors the vs-bot table) -->
       <div id="mpGame" hidden>
-        <!-- chat: collapsible panel, bottom-right -->
-        <div class="chat" id="mpChat">
-          <button class="chat-fab" id="chatFab" type="button" aria-label="Open chat">💬 <span class="chat-unread" id="chatUnread" hidden>0</span></button>
-          <div class="chat-panel" id="chatPanel" hidden>
-            <div class="chat-head">
-              <b>Room chat</b>
-              <button class="chat-close" id="chatClose" type="button" aria-label="Close chat">✕</button>
-            </div>
-            <div class="chat-log" id="chatLog"><div class="chat-empty">Say hi to your table 👋</div></div>
-            <form class="chat-form" id="chatForm">
-              <input id="chatInput" maxlength="200" placeholder="Type a message…" autocomplete="off" />
-              <button class="btn btn-primary chat-send" type="submit" aria-label="Send" title="Send">➤</button>
-            </form>
-          </div>
-        </div>
         <div class="opponent-zone" id="mpOpponents"></div>
 
         <div class="center-zone">
@@ -315,6 +372,54 @@
     <div class="bubble" id="cpuBubble" hidden>CPU: UNO!</div>
   </section>
 
+  <!-- ===== FRIENDS ===== -->
+  <div class="overlay" id="friendsOverlay">
+    <div class="modal friends-modal" role="dialog" aria-labelledby="friendsTitle">
+      <div class="friends-head">
+        <h3 id="friendsTitle">Friends</h3>
+        <button id="friendsClose" class="chat-close" type="button" aria-label="Close friends">✕</button>
+      </div>
+      <p class="invite-banner" id="inviteBanner" hidden></p>
+      <form class="friend-add" id="friendAddForm" autocomplete="off">
+        <input id="friendName" maxlength="16" placeholder="Add friend by username" autocapitalize="off" />
+        <button class="btn btn-primary" type="submit" id="friendAddBtn">Send</button>
+      </form>
+      <p class="hint friend-msg" id="friendMsg"></p>
+      <div class="friends-scroll">
+        <section id="friendReqSec" hidden>
+          <h4>Requests</h4>
+          <ul class="f-list" id="friendReqList"></ul>
+        </section>
+        <section>
+          <h4>Friends <span class="f-count" id="friendCount">0</span></h4>
+          <ul class="f-list" id="friendList"></ul>
+          <p class="f-empty" id="friendEmpty">No friends yet. Add someone by username above.</p>
+        </section>
+        <section id="friendSentSec" hidden>
+          <h4>Sent</h4>
+          <ul class="f-list" id="friendSentList"></ul>
+        </section>
+      </div>
+      <button id="alertsBtn" class="btn btn-ghost btn-quiet" type="button" hidden>Turn on phone alerts</button>
+    </div>
+  </div>
+
+  <!-- ===== JOIN WITH CODE ===== -->
+  <div class="overlay" id="codeOverlay">
+    <div class="modal code-modal" role="dialog" aria-labelledby="codeTitle">
+      <h3 id="codeTitle">Enter room code</h3>
+      <form id="codeForm" autocomplete="off">
+        <input id="codeInput" class="code-input code-big" maxlength="5" placeholder="• • • • •" autocapitalize="characters" inputmode="text" />
+        <p class="hint code-msg" id="codeMsg"></p>
+        <div class="over-actions">
+          <button type="button" id="codeCancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" id="codeGo" class="btn btn-join">Join</button>
+        </div>
+      </form>
+      <button type="button" id="codeBrowse" class="btn btn-ghost btn-quiet">Browse open rooms</button>
+    </div>
+  </div>
+
   <!-- ===== PROFILE MENU (all modes) ===== -->
   <div class="overlay" id="profileOverlay">
     <div class="modal profile-modal">
@@ -386,6 +491,7 @@
 
   <script src="vendor/anime.min.js"></script>
   <script src="room.js"></script>
+  <script src="social.js"></script>
   <script src="vendor/world3d.js" defer></script>
   <script src="game.js"></script>
 </body>

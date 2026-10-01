@@ -410,6 +410,8 @@ export async function handleApi(req, res, url) {
       if (parts[2] === "chat" && req.method === "GET") {
         const room = await findRoomByCode(String(parts[3] || url.searchParams.get("code") || "").toUpperCase());
         if (!room) return json(404, { error: "Room not found" });
+        const members = await roomPlayers(room.id);
+        if (!members.some((m) => m.id === user.id)) return json(403, { error: "Join the room to read the chat" });
         const msgs = await getChat(room.id, 30);
         return json(200, { msgs });
       }

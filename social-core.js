@@ -94,7 +94,8 @@ export async function handleSocial(user, action, method, body) {
 
   if (action === "sync" && method === "GET") {
     await touchUser(user.id);
-    return reply(200, await socialSnapshot(user.id));
+    const snap = await socialSnapshot(user.id);
+    return reply(200, { ...snap, me: { id: user.id, username: user.username, coins: user.coins, wins: user.wins, losses: user.losses } });
   }
 
   if (action === "request" && method === "POST") {

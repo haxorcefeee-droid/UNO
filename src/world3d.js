@@ -1144,7 +1144,8 @@ function start() {
     });
 
     const homeMode = mode === "home";
-    hero.visible = homeMode;
+    const onHome = activeScreen() && activeScreen().id === "home";
+    hero.visible = homeMode && !!onHome;
     table.visible = true;
     table.position.y = 0;
     heroCards.forEach((p, i) => {
