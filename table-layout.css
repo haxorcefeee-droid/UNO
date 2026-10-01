@@ -274,6 +274,8 @@ body {
   justify-self: start;
   z-index: 3;
   margin: 0 0 6px clamp(2px, 1vw, 10px);
+  /* Keeps the identity chip inside browser chrome on short desktop windows. */
+  transform: translateY(-30px);
 }
 
 .hand {
@@ -281,10 +283,20 @@ body {
   min-height: calc(var(--card-h) + 20px);
   padding: 8px 10px 2px clamp(70px, 10vw, 104px);
   overflow: visible;
+  /* The cards may arc beyond their flex box; reserve a visible lower margin. */
+  transform: translateY(-34px);
 }
 
 .hand .card {
   transform-origin: 50% 125%;
+}
+
+/* A browser-height desktop must still expose the whole hand. The engine
+   calculates overlap, while this cap owns the visual card scale. */
+@media (min-width: 561px) {
+  .hand {
+    --card-w: clamp(64px, 9vh, 92px) !important;
+  }
 }
 
 /* decorative character portraits stay modest, the cards remain primary */
@@ -308,6 +320,15 @@ body {
 .chat-panel {
   border-radius: 24px;
   border-width: 5px;
+}
+
+.over-modal .save-note {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: center;
+  margin-top: 0.65rem;
 }
 
 @media (orientation: landscape) and (max-height: 620px) {
@@ -362,6 +383,8 @@ body {
   }
 
   .seat.you { margin-bottom: 2px; }
+  .seat.you { transform: translateY(-12px); }
+  .hand { transform: translateY(-12px); }
   .announce { top: 8px; }
 }
 
@@ -405,6 +428,7 @@ body {
   .hand {
     padding-left: 64px;
     padding-right: 4px;
+    transform: translateY(-24px);
   }
 
   .btn.btn-uno {
@@ -425,7 +449,7 @@ body {
   }
 
   .draw-hint { font-size: 0.65rem; }
-  .seat.you { transform: scale(0.9); transform-origin: bottom left; }
+  .seat.you { transform: translateY(-18px) scale(0.9); transform-origin: bottom left; }
   .hand { padding-left: 58px; }
 }
 

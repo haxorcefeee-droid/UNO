@@ -1,0 +1,139 @@
+/* ============================================================
+   Real-3D layer.
+   Three.js paints the sky, planet, table, props and character
+   busts on #world3d. The DOM keeps every control, the hand and
+   the piles, so touch and drag stay exact.
+   Everything that depends on WebGL is scoped to html.w3d; with
+   WebGL off the earlier CSS world is still the complete UI.
+   ============================================================ */
+
+#world3d {
+  display: none;
+}
+
+.hero-stage {
+  display: none;
+}
+
+html.w3d #world3d {
+  display: block;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  touch-action: none;
+}
+
+html.w3d body {
+  background: #49c4ff;
+}
+
+/* the 3D scene replaces the painted sky, planet and felt */
+html.w3d .room-light,
+html.w3d #home::before,
+html.w3d #rooms::before,
+html.w3d #game > .table::before,
+html.w3d #roomTable::before,
+html.w3d .center-zone::before,
+html.w3d .center-zone::after {
+  display: none;
+}
+
+html.w3d .screen {
+  background: transparent;
+}
+
+/* ---------- home: hero stage reserves the camera window ---------- */
+html.w3d .hero-stage {
+  display: grid;
+  place-items: end center;
+  position: relative;
+  height: clamp(190px, 31vh, 300px);
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+html.w3d #home[data-dock="ranks"] .hero-stage { display: none; }
+
+.game-logo {
+  display: flex;
+  gap: clamp(2px, 1vw, 8px);
+  margin: 0 0 clamp(2px, 1vh, 8px);
+  font-family: "Baloo 2", "Nunito", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(3.2rem, 15vw, 5.4rem);
+  line-height: 0.9;
+  letter-spacing: 0;
+  color: #fff;
+  transform: rotate(-3deg);
+  filter: drop-shadow(0 6px 0 rgba(10, 40, 90, 0.35));
+}
+
+.game-logo span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.02em;
+  height: 1.14em;
+  border-radius: 0.22em;
+  border: 0.07em solid #fff;
+  box-shadow:
+    inset 0 -0.1em 0 rgba(0, 0, 0, 0.2),
+    inset 0 0.08em 0 rgba(255, 255, 255, 0.45);
+  text-shadow: 0 0.05em 0 rgba(0, 0, 0, 0.28);
+}
+
+.game-logo span:nth-child(1) { background: linear-gradient(180deg, #ff6b5e, #e5271f); transform: rotate(-5deg); }
+.game-logo span:nth-child(2) { background: linear-gradient(180deg, #ffe45c, #f0b400); transform: translateY(-0.06em) rotate(2deg); }
+.game-logo span:nth-child(3) { background: linear-gradient(180deg, #4dd96a, #14963a); transform: rotate(5deg); }
+
+html:not(.w3d) .game-logo { display: none; }
+
+html.w3d .home-inner {
+  justify-content: flex-start;
+}
+
+/* ---------- character busts rendered in 3D ---------- */
+html.w3d .avatar[data-face]:not(.empty) {
+  background:
+    var(--face) center 12% / 118% auto no-repeat,
+    radial-gradient(circle at 50% 36%, var(--plate-a, #ffe9c9), var(--plate-b, #f2b887) 82%);
+  box-shadow:
+    0 0 0 3px #fff,
+    0 4px 0 3px rgba(18, 70, 120, 0.28),
+    inset 0 -8px 12px rgba(0, 0, 0, 0.12);
+}
+
+html.w3d .avatar[data-face]:not(.empty)::before,
+html.w3d .avatar[data-face]:not(.empty)::after {
+  display: none;
+}
+
+html.w3d .seat.active-turn .avatar[data-face] {
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 6px #ffd23a,
+    0 0 20px rgba(255, 200, 40, 0.9);
+}
+
+/* ---------- cards sit on a lit table: thicker edge and soft contact shadow ---------- */
+html.w3d .hand .card,
+html.w3d .discard .card,
+html.w3d .card.back.draw-pile {
+  box-shadow:
+    0 1px 0 #fff inset,
+    0 3px 0 rgba(0, 0, 0, 0.22),
+    0 9px 12px rgba(6, 30, 50, 0.38);
+}
+
+html.w3d .turn-banner,
+html.w3d .draw-hint {
+  backdrop-filter: none;
+}
+
+/* DOM glass chips float above the world */
+html.w3d .topbar {
+  position: relative;
+  z-index: 5;
+}
