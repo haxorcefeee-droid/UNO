@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="world3d.css" />
   <link rel="stylesheet" href="social.css" />
   <link rel="stylesheet" href="feel.css" />
+  <link rel="stylesheet" href="night.css" />
 </head>
 <body>
   <canvas id="world3d" aria-hidden="true"></canvas>
@@ -173,11 +174,14 @@
   <!-- ===== ROOM (waiting + playing) ===== -->
   <section id="roomScreen" class="screen">
     <header class="topbar">
-      <button id="leaveRoomBtn" class="btn btn-ghost" type="button">Leave</button>
+      <button id="leaveRoomBtn" class="btn btn-ghost" type="button" aria-label="Leave">‹</button>
       <div class="topbar-center">
-        <div class="round-chip">Room <b id="roomCode">—</b> · <span id="roomStatus">lobby</span></div>
+        <div class="round-chip">#UN-<b id="roomCode">—</b></div>
+        <div class="hud-pot" id="roomPot">POT</div>
       </div>
       <div class="topbar-right">
+        <button class="hud-icon" id="mpChatJump" type="button" aria-label="Chat">💬</button>
+        <button class="hud-icon" id="mpSoundBtn" type="button" aria-label="Sound">🔊</button>
         <div class="coin-chip small">🪙 <b id="roomCoins">0</b></div>
         <button class="avatar-chip" id="roomProfileBtn" type="button" aria-label="Profile">
           <span class="avatar mini you" id="roomProfileAvatar">YOU</span>
@@ -245,18 +249,36 @@
               <div class="d-deck"></div>
               <div class="d-tag">DEALER</div>
             </div>
-            <div class="pile-label">Draw</div>
+            <div class="pile-label">DRAW</div>
             <div class="card back draw-pile" id="mpDrawPile"><span id="mpDrawCount">0</span></div>
           </div>
           <div class="discard" id="mpDiscardPile">
             <div class="color-ring" id="mpColorRing" aria-hidden="true"></div>
           </div>
+          <div class="discard-caption" id="mpDiscardCaption"></div>
         </div>
 
         <div class="player-zone">
           <div class="action-row">
-            <button id="mpUnoBtn" class="btn btn-uno" type="button" disabled><span class="uno-call">CALL</span><span class="uno-word">UNO</span></button>
-            <div class="draw-hint" id="mpDrawHint"></div>
+            <div class="night-turn">
+              <div class="night-turn-top">
+                <span class="night-live"></span>
+                <b class="night-label" id="mpNightLabel">YOUR TURN</b>
+                <span class="night-clock" id="mpNightClock">—</span>
+              </div>
+              <div class="draw-hint" id="mpDrawHint"></div>
+              <div class="night-meter"><i id="mpNightMeter"></i></div>
+              <span class="night-count" id="mpNightCount"></span>
+            </div>
+            <div class="night-bar">
+              <button id="mpUnoBtn" class="btn btn-uno" type="button" disabled><span class="uno-call">CALL</span><span class="uno-word">UNO!</span></button>
+              <div class="night-react" id="mpNightReact">
+                <button type="button" data-q="👍">👍</button>
+                <button type="button" data-q="😂">😂</button>
+                <button type="button" data-q="🔥">🔥</button>
+                <button type="button" data-q="GG">GG</button>
+              </div>
+            </div>
           </div>
           <div class="hand" id="mpPlayerHand"></div>
           <div class="seat you" id="mpYouSeat">
@@ -270,7 +292,10 @@
             </div>
             <div class="seat-info">
               <div class="seat-name" id="mpYouName">YOU</div>
-              <div class="seat-cards"><b id="mpYouCount">0</b> cards</div>
+              <div class="seat-cards"><span id="mpYouState">Active</span> · <b id="mpYouCount">0</b> Cards</div>
+            </div>
+            <div class="seat-meta">
+              <div class="you-wallet">🪙 <b id="mpYouWallet">0</b></div>
             </div>
           </div>
         </div>
@@ -289,17 +314,20 @@
   <!-- ===== VS BOT GAME ===== -->
   <section id="game" class="screen">
     <header class="topbar">
-      <button id="quitBtn" class="btn btn-ghost" type="button">Leave</button>
+      <button id="quitBtn" class="btn btn-ghost" type="button" aria-label="Leave">‹</button>
       <div class="topbar-center">
-        <div class="round-chip">Round <b id="roundNum">1</b> · Match <b id="matchScore">0 : 0</b></div>
+        <div class="round-chip">#UN-<b id="roundNum">1</b></div>
+        <div class="hud-pot">FREE</div>
       </div>
       <div class="topbar-right">
+        <button class="hud-icon" id="soundBtn" type="button" aria-label="Sound">🔊</button>
         <div class="coin-chip small">🪙 <b id="gameCoins">0</b></div>
         <button class="avatar-chip" id="gameProfileBtn" type="button" aria-label="Profile">
           <span class="avatar mini you" id="gameProfileAvatar">YOU</span>
         </button>
       </div>
-    </header>      <main class="table">
+    </header>
+    <main class="table">
       <!-- Opponent -->
       <div class="opponent-zone">
         <div class="seat" id="cpuSeat">
@@ -312,10 +340,11 @@
             <div class="ring-seconds" id="cpuSeconds" hidden>20</div>
           </div>
           <div class="seat-info">
-            <div class="seat-name">House Bot</div>
-            <div class="seat-cards"><b id="cpuCount">7</b> cards</div>
+            <div class="seat-name">House <span class="seat-sub">Bot</span></div>
+            <div class="seat-role">CPU</div>
+            <div class="seat-cards"><span id="cpuTotal">0 pts</span> · <span id="cpuState">Waiting</span></div>
+            <div class="seat-cards-count"><b id="cpuCount">7</b> cards</div>
           </div>
-          <div class="seat-score" id="cpuTotal">0 pts</div>
         </div>
         <div class="opponent-hand" id="opponentHand"></div>
       </div>
@@ -332,12 +361,13 @@
             <div class="d-deck"></div>
             <div class="d-tag">DEALER</div>
           </div>
-          <div class="pile-label">Draw</div>
+          <div class="pile-label">DRAW</div>
           <div class="card back draw-pile" id="drawPile"><span id="drawCount">62</span></div>
         </div>
         <div class="discard" id="discardPile">
           <div class="color-ring" id="colorRing" aria-hidden="true"></div>
         </div>
+        <div class="discard-caption" id="discardCaption"></div>
       </div>
 
       <!-- Table announcements -->
@@ -346,8 +376,25 @@
       <!-- Player -->
       <div class="player-zone">
         <div class="action-row">
-          <button id="unoBtn" class="btn btn-uno" type="button" disabled><span class="uno-call">CALL</span><span class="uno-word">UNO</span></button>
-          <div class="draw-hint" id="drawHint">It's your turn — play a card</div>
+          <div class="night-turn">
+            <div class="night-turn-top">
+              <span class="night-live"></span>
+              <b class="night-label" id="nightLabel">YOUR TURN</b>
+              <span class="night-clock" id="nightClock">—</span>
+            </div>
+            <div class="draw-hint" id="drawHint">Play a matching card or draw</div>
+            <div class="night-meter"><i id="nightMeter"></i></div>
+            <span class="night-count" id="nightCount">0 playable</span>
+          </div>
+          <div class="night-bar">
+            <button id="unoBtn" class="btn btn-uno" type="button" disabled><span class="uno-call">CALL</span><span class="uno-word">UNO!</span></button>
+            <div class="night-react" id="nightReact">
+              <button type="button" data-q="👍">👍</button>
+              <button type="button" data-q="😂">😂</button>
+              <button type="button" data-q="🔥">🔥</button>
+              <button type="button" data-q="GG">GG</button>
+            </div>
+          </div>
         </div>
         <div class="hand" id="playerHand"></div>
         <div class="seat you" id="youSeat">
@@ -360,10 +407,13 @@
             <div class="ring-seconds" id="youSeconds" hidden>20</div>
           </div>
           <div class="seat-info">
-            <div class="seat-name" id="youName">PLAYER</div>
-            <div class="seat-cards"><b id="youCount">7</b> cards</div>
+            <div class="seat-name" id="youName">YOU</div>
+            <div class="seat-cards"><span id="youState">Active</span> · <b id="youCount">7</b> Cards</div>
           </div>
-          <div class="seat-score" id="youTotal">0 pts</div>
+          <div class="seat-meta">
+            <div class="you-wallet">🪙 <b id="youWallet">0</b></div>
+            <div class="seat-score" id="youTotal">0 pts</div>
+          </div>
         </div>
       </div>
     </main>
@@ -371,7 +421,26 @@
     <!-- Toasts -->
     <div class="toast-stack" id="toastStack"></div>
     <div class="bubble" id="cpuBubble" hidden>CPU: UNO!</div>
+
   </section>
+
+  <div class="penalty" id="penaltySheet" hidden>
+    <div class="penalty-banner"><span>⚡</span> +4 PENALTY! <span>⚡</span></div>
+    <div class="penalty-steps" aria-hidden="true">
+      <b class="s1">+1</b><b class="s2">+2</b><b class="s3">+3</b><b class="s4">+4</b>
+    </div>
+    <div class="penalty-card">
+      <div class="penalty-tags">
+        <span class="tag-hot">⚡ WILD + 4</span>
+        <span class="tag-color">New Color <i id="penaltyColor">RED</i></span>
+      </div>
+      <p id="penaltyText"><b>House Bot</b> dealt you maximum pain. Four cards are already in your hand.</p>
+      <div class="penalty-timer"><span>⏱</span> Auto-close <b id="penaltySecs">3.0s</b></div>
+      <button id="penaltyDraw" class="penalty-draw" type="button"><span class="pd-ico">↓</span> DRAW 4 CARDS <span class="pd-side">SPACE −4</span></button>
+      <button id="penaltyPeek" class="penalty-peek" type="button">CHALLENGE HAND (INSPECT BOT)</button>
+      <div class="penalty-peek-row" id="penaltyPeekRow" hidden></div>
+    </div>
+  </div>
 
   <!-- ===== FRIENDS ===== -->
   <div class="overlay" id="friendsOverlay">

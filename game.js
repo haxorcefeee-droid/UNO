@@ -176,6 +176,7 @@ function renderAuthUI() {
     authArea.hidden = false;
     userArea.hidden = true;
   }
+  paintWallet();
 }
 
 function coinFloat(elFrom, text) {
@@ -203,7 +204,9 @@ const Sound = {
     if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
     return this.ctx;
   },
+  muted: false,
   blip(freq, dur, type, vol) {
+    if (this.muted) return;
     const ctx = this.ensure();
     if (!ctx) return;
     freq = freq || 600; dur = dur || 0.08; type = type || "triangle";
@@ -401,6 +404,52 @@ function topTilt() {
   return (n % 2 ? 1 : -1) * (3 + (n % 3) * 2);
 }
 
+function cardCaption(card) {
+  if (!card) return "";
+  const color = { red: "RED", yellow: "YELLOW", green: "GREEN", blue: "BLUE", wild: "WILD" };
+  const value = { skip: "SKIP", reverse: "REV", draw2: "+2", wild: "", wild4: "+4" };
+  if (card.value === "wild") return "WILD";
+  if (card.value === "wild4") return "WILD +4";
+  const v = value[card.value] != null ? value[card.value] : String(card.value);
+  return ((color[card.color] || card.color || "") + (v ? " " + v : "")).trim();
+}
+
+function paintCaption(id, card) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = cardCaption(card);
+  if (card) el.dataset.color = card.color === "wild" || card.value === "wild" || card.value === "wild4" ? "wild" : card.color;
+}
+
+function paintWallet() {
+  const n = Auth.user && Auth.user.coins != null ? Auth.user.coins : 0;
+  const a = $("youWallet");
+  const b = $("mpYouWallet");
+  const c = $("gameCoins");
+  if (a) a.textContent = n;
+  if (b) b.textContent = n;
+  if (c && Auth.user) c.textContent = n;
+}
+
+function paintNight(myTurn, playableN) {
+  const label = $("nightLabel");
+  const count = $("nightCount");
+  const turn = document.querySelector("#game .night-turn");
+  const youState = $("youState");
+  const cpuState = $("cpuState");
+  if (label) label.textContent = myTurn ? "YOUR TURN" : "HOUSE BOT";
+  if (count) count.textContent = myTurn ? playableN + " playable" : "";
+  if (turn) turn.classList.toggle("wait", !myTurn);
+  if (youState) youState.textContent = myTurn && !state.over ? "Active" : "Waiting";
+  if (cpuState) cpuState.textContent = !myTurn && !state.over ? "Playing" : "Waiting";
+  if (!myTurn || state.over) {
+    const clock = $("nightClock");
+    const meter = $("nightMeter");
+    if (clock) clock.textContent = "—";
+    if (meter) meter.style.width = "0%";
+  }
+}
+
 function syncDiscard() {
   // FLICKER FIX: the pile is never emptied. The new card is appended FIRST,
   // the oldest extra card fades out underneath (anime.js). If the top card
@@ -408,6 +457,7 @@ function syncDiscard() {
   const pile = dom.discardPile;
   const top6 = state.discard.slice(-6);
   const top = top6[top6.length - 1];
+  paintCaption("discardCaption", top);
   const key = top ? top.color + ":" + top.value : "";
   if (pile.dataset.top === key && pile.children.length === top6.length) return;
   const grewByOne = pile.children.length === top6.length - 1;
@@ -447,9 +497,11 @@ function renderAll(opts) {
   dom.cpuTotal.textContent = state.totalScores.cpu + " pts";
   dom.youTotal.textContent = state.totalScores.you + " pts";
   dom.roundNum.textContent = state.round;
-  dom.matchScore.textContent = state.totalScores.you + " : " + state.totalScores.cpu;
+  if (dom.matchScore) dom.matchScore.textContent = state.totalScores.you + " : " + state.totalScores.cpu;
   dom.drawCount.textContent = state.deck.length;
-  dom.youName.textContent = (state.name || "PLAYER").toUpperCase();
+  dom.youName.textContent = "YOU";
+  paintWallet();
+  if (dom.cpuTotal) dom.cpuTotal.textContent = state.totalScores.cpu + " pts";
 
   dom.cpuSeat.classList.toggle("active-turn", state.current === "cpu" && !state.over);
   dom.youSeat.classList.toggle("active-turn", state.current === "you" && !state.over);
@@ -493,8 +545,9 @@ function renderAll(opts) {
   dom.drawHint.textContent = state.over
     ? "Round finished"
     : myTurn
-      ? anyPlayable ? "Play a card from your hand" : "No plays — tap the glowing deck!"
+      ? anyPlayable ? "Play a matching card or draw" : "No plays — tap the glowing deck!"
       : "Opponent is thinking…";
+  paintNight(myTurn, playableCards().length);
   // beacon: no playable card on your turn → point at the deck
   dom.drawPile.classList.toggle("hint-glow", myTurn && !anyPlayable && !state.over);
 }
@@ -528,6 +581,45 @@ function toast(msg, kind) {
   el.textContent = msg;
   dom.toastStack.appendChild(el);
   setTimeout(() => el.remove(), 2600);
+}
+
+const COLOR_LABEL = { red: "CRIMSON", yellow: "AMBER", green: "EMERALD", blue: "AZURE" };
+
+function showPenalty(opts) {
+  opts = opts || {};
+  const sheet = $("penaltySheet");
+  if (!sheet) return;
+  const colorEl = $("penaltyColor");
+  const text = $("penaltyText");
+  const peekBtn = $("penaltyPeek");
+  const peekRow = $("penaltyPeekRow");
+  const name = opts.name || "House Bot";
+  if (colorEl) colorEl.textContent = COLOR_LABEL[opts.color] || String(opts.color || "RED").toUpperCase();
+  if (text) {
+    text.textContent = "";
+    const strong = document.createElement("b");
+    strong.textContent = name;
+    text.appendChild(strong);
+    text.appendChild(document.createTextNode(" dealt you maximum pain. Four cards are already in your hand."));
+  }
+  if (peekBtn) peekBtn.hidden = !opts.canPeek;
+  if (peekRow) { peekRow.hidden = true; peekRow.innerHTML = ""; }
+  sheet.hidden = false;
+  let left = 3.2;
+  const secs = $("penaltySecs");
+  if (secs) secs.textContent = left.toFixed(1) + "s";
+  clearInterval(showPenalty._t);
+  showPenalty._t = setInterval(() => {
+    left = Math.max(0, +(left - 0.1).toFixed(1));
+    if (secs) secs.textContent = left.toFixed(1) + "s";
+    if (left <= 0) hidePenalty();
+  }, 100);
+}
+
+function hidePenalty() {
+  clearInterval(showPenalty._t);
+  const sheet = $("penaltySheet");
+  if (sheet) sheet.hidden = true;
 }
 
 function showBubble(text) {
@@ -795,6 +887,12 @@ const Ring = {
       this.ringEl.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
       this.ringEl.classList.toggle("racing", sec <= 5);
     }
+    const clock = $("nightClock");
+    const meter = $("nightMeter");
+    const strip = document.querySelector("#game .night-turn");
+    if (clock) clock.textContent = sec + "s";
+    if (meter) meter.style.width = Math.max(0, Math.min(100, frac * 100)).toFixed(1) + "%";
+    if (strip) strip.classList.toggle("racing", sec <= 5);
     if (sec !== this.lastShown) {
       this.lastShown = sec;
       if (this.secondsEl) this.secondsEl.textContent = sec;
@@ -831,6 +929,10 @@ const Ring = {
     if (dom.cpuSeconds) dom.cpuSeconds.hidden = true;
     if (dom.youRing) { dom.youRing.style.strokeDashoffset = 0; dom.youRing.classList.remove("racing"); }
     if (dom.cpuRing) { dom.cpuRing.style.strokeDashoffset = 0; dom.cpuRing.classList.remove("racing"); }
+    const clock = $("nightClock");
+    const meter = $("nightMeter");
+    if (clock) clock.textContent = "—";
+    if (meter) meter.style.width = "0%";
   },
 
   stop() { this.hide(); }, // kept for readability: start() calls stop()
@@ -1004,6 +1106,7 @@ function applySpecial(who, card) {
     playSpecialFX("w4", victim === "you" ? "You draw 4" : "Opponent draws 4");
     drawCardsAnimated(victim, 4);
     announce(victim === "you" ? "YOU DRAW 4!" : "OPPONENT DRAWS 4!", victim === "you" ? "bad" : "good");
+    if (victim === "you") showPenalty({ name: "House Bot", color: state.activeColor, canPeek: true });
     return false;
   }
   if (card.value === "wild") {
@@ -1731,6 +1834,9 @@ window.Game = {
   tossDealer,
   flyFromEl,
   sound: Sound,
+  showPenalty,
+  hidePenalty,
+  cardCaption,
 };
 
 // refit BOTH hands on rotate/resize — with a constant card size this only
@@ -1859,6 +1965,42 @@ function bindHandPop(hand) {
 }
 bindHandPop(document.getElementById("playerHand"));
 bindHandPop(document.getElementById("mpPlayerHand"));
+
+function toggleMute() {
+  Sound.muted = !Sound.muted;
+  const glyph = Sound.muted ? "🔇" : "🔊";
+  const a = $("soundBtn");
+  const b = $("mpSoundBtn");
+  if (a) a.textContent = glyph;
+  if (b) b.textContent = glyph;
+}
+const soundA = $("soundBtn");
+const soundB = $("mpSoundBtn");
+if (soundA) soundA.addEventListener("click", toggleMute);
+if (soundB) soundB.addEventListener("click", toggleMute);
+
+const nightReact = $("nightReact");
+if (nightReact) {
+  nightReact.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-q]");
+    if (!btn) return;
+    toast(btn.dataset.q, "good");
+  });
+}
+
+const penaltyDraw = $("penaltyDraw");
+if (penaltyDraw) penaltyDraw.addEventListener("click", hidePenalty);
+const penaltyPeek = $("penaltyPeek");
+if (penaltyPeek) {
+  penaltyPeek.addEventListener("click", () => {
+    const row = $("penaltyPeekRow");
+    if (!row) return;
+    row.hidden = false;
+    row.innerHTML = "";
+    state.cpu.forEach((card) => row.appendChild(renderCard(card, { still: true })));
+    if (!state.cpu.length) row.textContent = "The bot has no cards.";
+  });
+}
 
 // ---------- boot ----------
 (async function boot() {
