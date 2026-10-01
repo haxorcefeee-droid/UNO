@@ -1449,8 +1449,8 @@ async function endRound(winner) {
   const matchOver = state.totalScores[winner] >= WIN_TARGET;
 
   dom.overTitle.textContent = matchOver
-    ? (winner === "you" ? "🏆 You win the match!" : "House bot wins the match")
-    : (winner === "you" ? "You win the round!" : "House bot wins");
+    ? (winner === "you" ? "You win!" : "You lose")
+    : (winner === "you" ? "You win!" : "You lose");
   dom.overTitle.className = "over-title " + (winner === "you" ? "win" : "lose");
   dom.overSub.textContent = matchOver
     ? WIN_TARGET + " points reached"
@@ -1741,7 +1741,7 @@ function openProfile() {
 }
 
 (function wireProfile() {
-  const btns = ["roomProfileBtn", "gameProfileBtn"];
+  const btns = ["roomProfileBtn", "gameProfileBtn", "homeProfileBtn"];
   btns.forEach((id) => {
     const b = document.getElementById(id);
     if (b) b.addEventListener("click", openProfile);
@@ -1764,6 +1764,13 @@ renderAuthUI = function () {
   });
 };
 (function () {
+  document.querySelectorAll("[data-dock]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const home = document.getElementById("home");
+      if (home) home.dataset.dock = btn.dataset.dock;
+      document.querySelectorAll("[data-dock]").forEach((b) => b.classList.toggle("on", b === btn));
+    });
+  });
   const nav = document.getElementById("joinRoomNavBtn");
   if (nav) {
     nav.addEventListener("click", () => {
