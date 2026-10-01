@@ -43,6 +43,7 @@
   --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
+  --pile-label-h: 0.75rem;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -153,6 +154,9 @@ body {
 
 .screen { position: relative; z-index: 1; display: none; height: 100%; height: 100dvh; }
 .screen.active { display: flex; flex-direction: column; }
+/* native-app feel: no double-tap zoom delay, no long-press callout menus */
+.screen, .table, .hand, .seat, .center-zone { touch-action: manipulation; -webkit-touch-callout: none; }
+.table, .hand, .seat { user-select: none; -webkit-user-select: none; }
 
 /* ---------- buttons: 44px+ touch targets ---------- */
 .btn {
@@ -689,10 +693,13 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.45rem;
   max-width: 100%;
-  min-height: 0;
+  /* space is RESERVED for the seats: a player joining, leaving or taking their
+     turn must never move the table */
+  min-height: 72px;
+  padding: 0.15rem 0;
 }
 
 /* multiplayer seats line up in a clean wrapping row */
@@ -712,7 +719,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   max-width: 100%;
 }
 
-.seat .seat-info { min-width: 0; }
+.seat .seat-info { min-width: 62px; }
 
 .seat {
   display: flex;
@@ -726,23 +733,27 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   transition: box-shadow var(--t-med), border-color var(--t-med), transform var(--t-med);
 }
 
+/* The active seat is emphasised with PAINT ONLY — identical geometry, so
+   nothing reflows, resizes or shifts when the turn moves. (The old version
+   grew the ring 58→66px, bumped the name font and scaled the seat, which
+   made the whole table jump on every turn — the "screen resizing" bug.) */
 .seat.active-turn {
-  border-color: rgba(255, 216, 77, 0.9);
+  border-color: rgba(255, 216, 77, 0.95);
   animation: turnGlow 1.1s ease-in-out infinite;
-  transform: scale(1.14); /* active player grows: bigger ring, smaller relative chip */
   z-index: 5;
 }
 
-.seat.active-turn .seat-ring,
-.seat.active-turn .seat-ring svg { width: 66px; height: 66px; }
+.seat.active-turn .seat-ring {
+  box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.5);
+}
 
-.seat.active-turn .seat-name { font-size: 0.85rem; max-width: 30vw; }
+.seat.active-turn .seat-name { color: #ffd84d; }
 
-.seat.active-turn .seat-cards { font-size: 0.6rem; opacity: 0.85; }
+.seat.active-turn .seat-cards { opacity: 0.95; }
 
 @keyframes turnGlow {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.15); transform: scale(1); }
-  50% { box-shadow: 0 0 0 7px rgba(255, 216, 77, 0.38), 0 0 26px rgba(255, 216, 77, 0.5); transform: scale(1.03); }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.15); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 216, 77, 0.38), 0 0 26px rgba(255, 216, 77, 0.5); }
 }
 
 .seat-ring { position: relative; width: 58px; height: 58px; flex-shrink: 0; }
@@ -1056,7 +1067,7 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 /* ---------- center zone: real 3D table ---------- */
 .center-zone {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   gap: clamp(1.2rem, 7vw, 3.5rem);
   flex: 1;
@@ -1065,6 +1076,10 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   padding: 0.5rem 0;
   perspective: 1100px; /* true 3D stage for the piles */
 }
+
+/* the draw deck and the discard sit on ONE baseline like a real table; the
+   dealer rises above the deck instead of pushing it out of alignment */
+.center-zone > .discard { margin-bottom: calc(var(--pile-label-h) + 0.3rem); }
 
 /* the felt surface tilts back like a real table (both modes) */
 .center-zone::before {
@@ -1099,6 +1114,8 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.55);
+  height: var(--pile-label-h);
+  line-height: var(--pile-label-h);
   margin-bottom: 0.3rem;
 }
 
@@ -1529,6 +1546,10 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   display: flex;
   justify-content: center;
   align-items: flex-end;
+  /* the hand re-declares --card-h from its OWN --card-w: the :root value was
+     already substituted there, so hand cards would otherwise be stretched to
+     the wrong aspect ratio while --card-h came from the global card width */
+  --card-h: calc(var(--card-w) * 1.5);
   min-height: calc(var(--card-h) + 30px);
   padding-top: 14px;
   width: 100%;
@@ -1544,6 +1565,9 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   will-change: transform;
   cursor: grab;
 }
+
+/* tap feedback without touching transform (the fan vars own it) */
+.hand .card:active { filter: brightness(0.93) saturate(1.1); }
 
 /* ---------- 3D card flip (back → face) ---------- */
 .card .card-flip {
