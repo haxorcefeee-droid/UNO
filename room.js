@@ -950,11 +950,6 @@
   const PLAY_GRACE_MS = 4000;
   function turnFrac() {
     if (!R.timerEnd) return 1;
-    // while the grace pause is active, hold the clock: shift the deadline
-    // forward every tick so the remaining time doesn't decrease
-    if (R.graceUntil && Date.now() < R.graceUntil) {
-      R.timerEnd += 200; // matches the UI loop tick
-    }
     return Math.max(0, Math.min(1, (R.timerEnd - Date.now()) / turnMs()));
   }
 
@@ -1001,41 +996,41 @@
     if (ring) ring.style.strokeDashoffset = 0;
   }
 
-  // 200ms UI loop: keeps every visible seat ring animating between the
-  // 1.5s polls, so the radar/timer feels real-time on ALL seats.
+  // Paint the turn ring every frame. The grace pause holds the deadline
+  // by the real elapsed time, so the ring drains smoothly instead of in steps.
   function startTimerLoop() {
     stopTimerLoop();
-    R.timerLoop = setInterval(() => {
+    let last = performance.now();
+    const tick = (now) => {
+      R.timerLoop = requestAnimationFrame(tick);
+      const dt = Math.min(now - last, 80);
+      last = now;
       const g = R.game;
       if (!g || g.winner != null || R.roomStatus !== "playing") return;
+      if (R.graceUntil && Date.now() < R.graceUntil && R.timerEnd) R.timerEnd += dt;
       const youIdx = R.youSeatIdx;
-      // mine
-      const isMine = g.current === youIdx;
-      applyTurnRing($("mpYouRing"), $("mpYouSeconds"), $("mpYouSeat"), isMine, true);
-      // opponents
+      applyTurnRing($("mpYouRing"), $("mpYouSeconds"), $("mpYouSeat"), g.current === youIdx, true);
       const oppZone = $("mpOpponents");
-      if (oppZone) {
-        [...oppZone.children].forEach((row) => {
-          const s = parseInt(row.dataset.seat, 10);
-          const ring = row.querySelector(".ring-fill");
-          const box = row.querySelector(".seat-ring");
-          if (!ring || !box) return;
-          const isTurn = g.current === s;
-          box.classList.toggle("radar", isTurn);
-          if (isTurn) {
-            ring.style.strokeDashoffset = (100 - turnFrac() * 100).toFixed(2);
-            ring.classList.toggle("racing", turnFrac() < 1 / 3);
-          } else {
-            ring.style.strokeDashoffset = "0";
-            ring.classList.remove("racing");
-          }
-        });
-      }
-    }, 200);
+      if (!oppZone) return;
+      const frac = turnFrac();
+      [...oppZone.children].forEach((row) => {
+        const ring = row.querySelector(".ring-fill");
+        if (!ring) return;
+        const isTurn = g.current === parseInt(row.dataset.seat, 10);
+        if (isTurn) {
+          ring.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
+          ring.classList.toggle("racing", frac < 1 / 3);
+        } else {
+          ring.style.strokeDashoffset = "0";
+          ring.classList.remove("racing");
+        }
+      });
+    };
+    R.timerLoop = requestAnimationFrame(tick);
   }
 
   function stopTimerLoop() {
-    if (R.timerLoop) { clearInterval(R.timerLoop); R.timerLoop = null; }
+    if (R.timerLoop) { cancelAnimationFrame(R.timerLoop); R.timerLoop = null; }
   }
 
   function countMyHand() {

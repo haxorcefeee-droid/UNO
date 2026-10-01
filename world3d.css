@@ -111,10 +111,7 @@ html.w3d .avatar[data-face]:not(.empty)::after {
 }
 
 html.w3d .seat.active-turn .avatar[data-face] {
-  box-shadow:
-    0 0 0 3px #fff,
-    0 0 0 6px #ffd23a,
-    0 0 20px rgba(255, 200, 40, 0.9);
+  box-shadow: 0 0 0 3px #fff;
 }
 
 /* ---------- cards sit on a lit table: thicker edge and soft contact shadow ---------- */

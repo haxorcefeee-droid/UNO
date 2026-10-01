@@ -7,7 +7,7 @@ const out = path.join(root, "dist");
 mkdirSync(out, { recursive: true });
 mkdirSync(path.join(out, "vendor"), { recursive: true });
 
-for (const file of ["index.html", "style.css", "world.css", "table-layout.css", "world3d.css", "social.css", "game.js", "room.js", "social.js"]) {
+for (const file of ["index.html", "style.css", "world.css", "table-layout.css", "world3d.css", "social.css", "feel.css", "game.js", "room.js", "social.js"]) {
   copyFileSync(path.join(root, file), path.join(out, file));
 }
 for (const f of ["anime.min.js", "world3d.js"]) {
@@ -26,6 +26,7 @@ const busted = html
   .replace(/world\.css(?=")/g, `world.css?v=${hash("world.css")}`)
   .replace(/table-layout\.css(?=")/g, `table-layout.css?v=${hash("table-layout.css")}`)
   .replace(/social\.css(?=")/g, `social.css?v=${hash("social.css")}`)
+  .replace(/feel\.css(?=")/g, `feel.css?v=${hash("feel.css")}`)
   .replace(/social\.js(?=")/g, `social.js?v=${hash("social.js")}`)
   .replace(/world3d\.css(?=")/g, `world3d.css?v=${hash("world3d.css")}`)
   .replace(/vendor\/world3d\.js(?=")/g, `vendor/world3d.js?v=${hash(path.join("vendor", "world3d.js"))}`)

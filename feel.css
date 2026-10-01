@@ -1,0 +1,30 @@
+/* Turn focus, gyro tilt, and the card pop.
+   Loaded last so it wins over the older pulse and radar styles. */
+
+.seat {
+  border-radius: 999px;
+}
+
+.seat.active-turn,
+.seat.racing {
+  animation: none;
+}
+
+/* Tilt the player's side of the table. The hand keeps its own transform,
+   which the layout uses to hold the cards clear of the screen edge. */
+.player-zone {
+  perspective: 900px;
+  transform: rotateX(calc(var(--gyro-y, 0) * -6deg)) rotateY(calc(var(--gyro-x, 0) * 8deg));
+  transform-origin: 50% 80%;
+  transition: transform 0.08s linear;
+}
+
+.hand .card.pop:not(.dragging),
+.hand .card:hover:not(.dragging) {
+  transform: translateY(-36px) rotate(var(--fan-rot, 0deg)) scale(1.14) !important;
+  z-index: 40;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-zone { transform: none; transition: none; }
+}

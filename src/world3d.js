@@ -1129,7 +1129,10 @@ function start() {
     cur.target.lerp(wanted.target, k);
 
     const sway = REDUCED ? 0 : Math.sin(t * 0.45) * 0.012;
-    poseCamera(camera, { target: cur.target, pitch: cur.pitch + sway, yaw: cur.yaw + sway * 1.6, dist: cur.dist });
+    const g = window.Gyro;
+    const tiltX = !REDUCED && g ? g.y * 0.075 : 0;
+    const tiltY = !REDUCED && g ? g.x * 0.11 : 0;
+    poseCamera(camera, { target: cur.target, pitch: cur.pitch + sway + tiltX, yaw: cur.yaw + sway * 1.6 + tiltY, dist: cur.dist });
     camera.setViewOffset(W, H, -cur.ox, -cur.oy, W, H);
     camera.updateMatrixWorld(true);
 
