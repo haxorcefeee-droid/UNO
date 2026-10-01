@@ -274,6 +274,8 @@ body {
   justify-self: start;
   z-index: 3;
   margin: 0 0 6px clamp(2px, 1vw, 10px);
+  /* Keeps the identity chip inside browser chrome on short desktop windows. */
+  transform: translateY(-30px);
 }
 
 .hand {
@@ -281,6 +283,8 @@ body {
   min-height: calc(var(--card-h) + 20px);
   padding: 8px 10px 2px clamp(70px, 10vw, 104px);
   overflow: visible;
+  /* The cards may arc beyond their flex box; reserve a visible lower margin. */
+  transform: translateY(-34px);
 }
 
 .hand .card {
@@ -379,6 +383,8 @@ body {
   }
 
   .seat.you { margin-bottom: 2px; }
+  .seat.you { transform: translateY(-12px); }
+  .hand { transform: translateY(-12px); }
   .announce { top: 8px; }
 }
 
@@ -422,6 +428,7 @@ body {
   .hand {
     padding-left: 64px;
     padding-right: 4px;
+    transform: translateY(-24px);
   }
 
   .btn.btn-uno {
@@ -442,7 +449,7 @@ body {
   }
 
   .draw-hint { font-size: 0.65rem; }
-  .seat.you { transform: scale(0.9); transform-origin: bottom left; }
+  .seat.you { transform: translateY(-18px) scale(0.9); transform-origin: bottom left; }
   .hand { padding-left: 58px; }
 }
 
