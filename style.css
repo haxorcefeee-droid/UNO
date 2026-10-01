@@ -17,21 +17,22 @@
   --radius-large: 24px;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.25);
 
-  /* legacy variable names kept — whole file re-themes through these */
-  --felt: #123A5C;
-  --felt-dark: #0A2540;
-  --wood: #14304A;
-  --wood-dark: #0B1E30;
-  --ink: #10263C;
+  /* legacy variable names kept — whole file re-themes through these.
+     Card Party palette: sunny felt, warm wood rim. */
+  --felt: #2FBF8F;
+  --felt-dark: #159A6E;
+  --wood: #B5762F;
+  --wood-dark: #7A4A16;
+  --ink: #10324A;
   --red: var(--accent-red);
   --yellow: var(--accent-yellow);
   --green: var(--accent-green);
   --blue: var(--accent-blue);
   --text: var(--text-primary);
-  --muted: var(--text-secondary);
-  --panel: rgba(13, 41, 66, 0.62);
-  --panel-border: rgba(169, 191, 213, 0.16);
-  --font: "Nunito", "Segoe UI", sans-serif;
+  --muted: #DFF1FF;
+  --panel: rgba(9, 74, 124, 0.6);
+  --panel-border: rgba(255, 255, 255, 0.28);
+  --font: "Baloo 2", "Nunito", "Segoe UI", sans-serif;
   /* dynamic card size — JS updates --hand-vh to fit any hand width.
      Mobile-first: bigger cards so the hand reads like a real card game. */
   --card-w: clamp(58px, calc((100vw - 34px) / 6), 108px);
@@ -52,9 +53,10 @@ html, body { height: 100%; overscroll-behavior: none; }
 
 body {
   font-family: var(--font);
+  /* Card Party look: bright party sky, not dark navy */
   background:
-    radial-gradient(1100px 700px at 50% -20%, #12365a, transparent 60%),
-    var(--bg-primary);
+    radial-gradient(1200px 500px at 50% -10%, rgba(255, 255, 255, 0.35), transparent 60%),
+    linear-gradient(180deg, #35B6FF 0%, #1E90E0 42%, #1670C4 100%);
   color: var(--text);
   overflow: hidden;
   position: fixed;
@@ -64,14 +66,20 @@ body {
   padding: 0;
 }
 
+/* party confetti sprinkles over the sky */
 .room-light {
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(900px 480px at 50% 18%, rgba(22, 140, 255, 0.16), transparent 65%),
-    radial-gradient(1400px 900px at 50% 120%, rgba(0, 0, 0, 0.5), transparent 60%);
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.5) 2px, transparent 2.5px),
+    radial-gradient(rgba(255, 201, 40, 0.5) 2px, transparent 2.5px),
+    radial-gradient(rgba(255, 59, 48, 0.35) 2px, transparent 2.5px),
+    radial-gradient(rgba(53, 216, 91, 0.4) 2px, transparent 2.5px);
+  background-size: 90px 90px, 130px 110px, 110px 130px, 150px 150px;
+  background-position: 0 0, 30px 40px, 70px 20px, 40px 80px;
   pointer-events: none;
   z-index: 0;
+  animation: lightDrift 12s ease-in-out infinite;
 }
 
 /* full-screen special-card FX layer */
@@ -152,13 +160,16 @@ body {
   font-weight: 800;
   font-size: 0.9rem;
   padding: 0.75rem 1.5rem;
-  min-height: 44px;
-  border-radius: 999px;
+  min-height: 46px;
+  border-radius: 16px;
   border: none;
+  border-bottom: 4px solid rgba(0, 0, 0, 0.22);
   cursor: pointer;
   transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-med), filter var(--t-fast);
   touch-action: manipulation;
 }
+
+.btn:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 2px; }
 
 .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); }
 .btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
@@ -167,7 +178,8 @@ body {
 .btn-primary {
   background: linear-gradient(180deg, var(--accent-green), #1f9e3e);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border-bottom-color: #14702c;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .btn-primary:hover:not(:disabled) { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
@@ -183,13 +195,15 @@ body {
 /* premium CTA system */
 .btn-hero {
   width: 100%;
-  min-height: 58px;
-  font-size: 1.15rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  color: #08251a;
-  background: linear-gradient(180deg, #ffd84d, #f0a929);
-  box-shadow: 0 12px 30px rgba(240, 169, 41, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.6);
+  min-height: 60px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(180deg, #ffd84d 0%, #ffb020 100%);
+  border-bottom-color: #c47a00;
+  box-shadow: 0 10px 26px rgba(200, 120, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.65);
+  text-shadow: 0 1px 0 rgba(122, 58, 0, 0.4);
 }
 
 .btn-hero:active { transform: scale(0.98); }
@@ -197,6 +211,7 @@ body {
 .btn-secondary {
   background: linear-gradient(180deg, var(--accent-blue), #0d5cb8);
   color: #fff;
+  border-bottom-color: #083f80;
   box-shadow: 0 8px 20px rgba(22, 140, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
@@ -365,27 +380,60 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .tp-card .corner.br { bottom: 3px; right: 7px; transform: rotate(180deg); }
 
 .brand {
-  font-size: clamp(2.6rem, 9vw, 4rem);
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 3px 0 #c22e2c, 0 6px 0 #8f1f1d, 0 10px 24px rgba(0, 0, 0, 0.55);
-  margin-bottom: 0.3rem;
+  font-size: clamp(2.8rem, 10vw, 4.4rem);
+  font-weight: 800;
+  color: #ffd84d;
+  -webkit-text-stroke: 2px #7a3a00;
+  text-shadow:
+    0 3px 0 #e8542f,
+    0 6px 0 #b03a1a,
+    0 12px 30px rgba(9, 74, 124, 0.55);
+  margin-bottom: 0.2rem;
+  transform: rotate(-3deg);
 }
 
-.tagline { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.8rem; }
+.tagline {
+  color: #eaf6ff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  text-shadow: 0 1px 3px rgba(9, 74, 124, 0.5);
+}
 #rulesBtn { margin-bottom: 1.4rem; }
 
 .home-card {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 18px;
-  padding: 1.4rem 1.2rem;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  background: rgba(255, 255, 255, 0.94);
+  border: 3px solid #fff;
+  border-radius: 24px;
+  padding: 1.3rem 1.1rem;
+  box-shadow: 0 18px 44px rgba(9, 74, 124, 0.45);
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+  color: var(--ink);
 }
+
+.home-card label { color: #0a6ea8; }
+
+.home-card input,
+.home-card select {
+  background: #eef7ff;
+  border: 2px solid #cfe6f7;
+  color: var(--ink);
+}
+
+.home-card input:focus,
+.home-card select:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(22, 140, 255, 0.22); }
+
+.home-card .hint { color: #4a7396; }
+
+.home-card .btn-ghost { color: #0a6ea8; border-color: #cfe6f7; background: #f2faff; }
+
+.home-card .wallet-user b { color: var(--ink); }
+
+.home-card .stats-row span { color: #4a7396; }
+
+.home-card .stats-row b { color: var(--ink); }
 
 .home-card label {
   display: block;
@@ -542,8 +590,8 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   align-items: center;
   justify-content: space-between;
   padding: calc(0.4rem + var(--sat)) 0.7rem 0.4rem;
-  background: linear-gradient(180deg, rgba(7, 26, 45, 0.95), rgba(7, 26, 45, 0.72));
-  border-bottom: 1px solid rgba(169, 191, 213, 0.12);
+  background: linear-gradient(180deg, rgba(9, 74, 124, 0.92), rgba(9, 74, 124, 0.55));
+  border-bottom: 2px solid rgba(255, 255, 255, 0.22);
   gap: 0.5rem;
   min-height: 52px;
 }
@@ -1334,8 +1382,16 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.92);
-  clip-path: ellipse(46% 38% at 50% 50%);
+  background: #fff;
+  clip-path: ellipse(52% 42% at 50% 50%);
+}
+
+/* classic UNO look: chunky numeral + drop shadow, slight italic */
+.card .val {
+  font-style: italic;
+  text-shadow:
+    2px 2px 0 rgba(0, 0, 0, 0.28),
+    0 0 8px rgba(255, 255, 255, 0.5);
 }
 
 .card .val {
@@ -1359,10 +1415,14 @@ select:focus { border-color: #ffd84d; box-shadow: 0 0 0 3px rgba(255, 216, 77, 0
 .card .corner.tl { top: 4px; left: 7px; }
 .card .corner.br { bottom: 4px; right: 7px; transform: rotate(180deg); }
 
-.card.red .inner { background: var(--red); }
-.card.yellow .inner { background: var(--yellow); }
-.card.green .inner { background: var(--green); }
-.card.blue .inner { background: var(--blue); }
+/* bright party suits */
+.card.red .inner { background: linear-gradient(165deg, #FF5A50, var(--accent-red) 70%); }
+.card.yellow .inner { background: linear-gradient(165deg, #FFDD55, var(--accent-yellow) 70%); }
+.card.green .inner { background: linear-gradient(165deg, #55E87A, var(--accent-green) 70%); }
+.card.blue .inner { background: linear-gradient(165deg, #55AAFF, var(--accent-blue) 70%); }
+
+.card.yellow .val,
+.card.yellow .corner { color: #7a5200; text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.4); }
 .card.wild .inner { background: conic-gradient(var(--red) 0 90deg, var(--yellow) 90deg 180deg, var(--green) 180deg 270deg, var(--blue) 270deg 360deg); }
 
 .card.wild .val { font-size: calc(var(--card-w) * 0.26); color: #fff; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.6); }
