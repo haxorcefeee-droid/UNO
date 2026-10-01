@@ -96,6 +96,12 @@ mock.module("../db.js", {
       return { id: nextRoomId++ * 1000, username, body, at: new Date().toISOString() };
     },
     async getChat(roomId, limit = 30) { return []; },
+    async sweepStaleRooms() {},
+    async touchUser() {},
+    getSql() { throw new Error("not used in this test"); },
+    async roomsOfUser(userId) {
+      return [...rooms.values()].filter((r) => (seats.get(r.id) || new Map()).has(userId));
+    },
     async ensureSchemaOnce() {},
     async databaseStatus() { return { ok: true, engine: "mock" }; },
     publicDbError(err) { return err && err.message ? err.message : "db error"; },
