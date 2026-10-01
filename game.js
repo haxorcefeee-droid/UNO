@@ -790,14 +790,14 @@ const Ring = {
     const remainMs = Math.max(0, this.endAt - performance.now());
     const sec = Math.ceil(remainMs / 1000);
 
+    const frac = remainMs / (TURN_SECONDS * 1000);
+    if (this.ringEl) {
+      this.ringEl.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
+      this.ringEl.classList.toggle("racing", sec <= 5);
+    }
     if (sec !== this.lastShown) {
       this.lastShown = sec;
       if (this.secondsEl) this.secondsEl.textContent = sec;
-      const frac = remainMs / (TURN_SECONDS * 1000);
-      if (this.ringEl) {
-        this.ringEl.style.strokeDashoffset = (100 - frac * 100).toFixed(2);
-        this.ringEl.classList.toggle("racing", sec <= 5);
-      }
       if (sec <= 5 && sec > 0) Sound.tick();
     }
 
@@ -1804,6 +1804,61 @@ renderAuthUI = function () {
     });
   }
 })();
+
+// ---------- gyro: phone tilt, or the mouse on a desktop ----------
+window.Gyro = { x: 0, y: 0 };
+(function () {
+  if (reducedMotion()) return;
+  let tx = 0, ty = 0, x = 0, y = 0, fromDevice = false;
+  const root = document.documentElement;
+  const step = () => {
+    x += (tx - x) * 0.14;
+    y += (ty - y) * 0.14;
+    window.Gyro.x = x;
+    window.Gyro.y = y;
+    root.style.setProperty("--gyro-x", x.toFixed(3));
+    root.style.setProperty("--gyro-y", y.toFixed(3));
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  window.addEventListener("pointermove", (e) => {
+    if (fromDevice || e.pointerType === "touch") return;
+    tx = (e.clientX / window.innerWidth - 0.5) * 2;
+    ty = (e.clientY / window.innerHeight - 0.5) * 2;
+  }, { passive: true });
+  const onOrient = (e) => {
+    if (e.gamma == null) return;
+    fromDevice = true;
+    tx = Math.max(-1, Math.min(1, e.gamma / 22));
+    ty = Math.max(-1, Math.min(1, ((e.beta || 0) - 48) / 28));
+  };
+  const listen = () => window.addEventListener("deviceorientation", onOrient, true);
+  document.addEventListener("pointerdown", () => {
+    const D = window.DeviceOrientationEvent;
+    if (D && typeof D.requestPermission === "function") {
+      D.requestPermission().then((s) => { if (s === "granted") listen(); }).catch(() => {});
+    } else {
+      listen();
+    }
+  }, { once: true });
+})();
+
+// Sliding a finger or a cursor over the hand pops that card up.
+function bindHandPop(hand) {
+  if (!hand || hand.dataset.popBound) return;
+  hand.dataset.popBound = "1";
+  hand.addEventListener("pointermove", (e) => {
+    const card = e.target.closest && e.target.closest(".card");
+    const hit = card && hand.contains(card) && !card.classList.contains("dragging") ? card : null;
+    hand.querySelectorAll(".card.pop").forEach((c) => { if (c !== hit) c.classList.remove("pop"); });
+    if (hit) hit.classList.add("pop");
+  });
+  const clear = () => hand.querySelectorAll(".card.pop").forEach((c) => c.classList.remove("pop"));
+  hand.addEventListener("pointerleave", clear);
+  hand.addEventListener("pointercancel", clear);
+}
+bindHandPop(document.getElementById("playerHand"));
+bindHandPop(document.getElementById("mpPlayerHand"));
 
 // ---------- boot ----------
 (async function boot() {

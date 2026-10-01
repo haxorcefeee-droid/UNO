@@ -580,15 +580,12 @@ body {
 .seat-score { color: #e9ffd8; }
 
 .seat.active-turn {
-  border-color: transparent;
-  animation: turnGlow 1.8s ease-in-out infinite;
+  border-color: #ffd23a;
+  animation: none;
 }
 
 .seat.active-turn .avatar {
-  box-shadow:
-    0 0 0 3px #fff,
-    0 0 0 6px #ffd23a,
-    0 0 18px rgba(255, 200, 40, 0.85);
+  box-shadow: 0 0 0 3px #fff;
 }
 
 /* character busts — original faces, not a copied mascot */
