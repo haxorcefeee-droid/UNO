@@ -1,0 +1,430 @@
+/* ============================================================
+   Card-table hierarchy
+   A distinct, responsive game table rather than a scene with
+   cards placed on it. Layout is entirely grid/flex driven:
+   opponent → shared table → action rail → player hand.
+   ============================================================ */
+
+:root {
+  --table-ink: #112b4a;
+  --table-felt: #14715c;
+  --table-felt-deep: #0b403c;
+  --table-edge: #e5a645;
+  --table-cream: #fff9e8;
+}
+
+body {
+  background:
+    radial-gradient(72rem 34rem at 50% -14%, rgba(255, 255, 255, 0.82), transparent 52%),
+    linear-gradient(180deg, #9ee7ff 0%, #5bbbe7 46%, #2b88be 100%);
+}
+
+.room-light::before,
+.room-light::after { opacity: 0.42; }
+
+/* ---------- home: game cover art, not a dashboard ---------- */
+#home::before,
+#rooms::before {
+  bottom: -71%;
+  width: min(184%, 1160px);
+  background:
+    radial-gradient(ellipse 20% 12% at 27% 38%, #8adc59 0 69%, transparent 71%),
+    radial-gradient(ellipse 22% 14% at 68% 48%, #63c945 0 69%, transparent 71%),
+    radial-gradient(circle at 42% 42%, #2078ba 0%, #125796 52%, #0b3767 100%);
+}
+
+.home-inner {
+  width: min(560px, 100%);
+  gap: clamp(0.65rem, 2.2vh, 1rem);
+}
+
+.mode-board { gap: clamp(12px, 3vw, 20px); }
+
+.mode-card {
+  aspect-ratio: 1 / 1.24;
+  border-radius: 30px;
+  border-width: 6px;
+  box-shadow:
+    0 8px 0 rgba(21, 74, 120, 0.2),
+    0 18px 30px rgba(10, 56, 100, 0.25);
+}
+
+.mode-classic {
+  background:
+    radial-gradient(ellipse 78% 45% at 50% 40%, #ff463e 0 45%, transparent 47%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 9px),
+    linear-gradient(165deg, #30323a 0%, #10141d 62%, #080b11 100%);
+}
+
+.mode-friends {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.6), transparent 29%),
+    radial-gradient(circle at 28% 72%, rgba(255, 226, 62, 0.62) 0 7%, transparent 8%),
+    radial-gradient(circle at 72% 70%, rgba(255, 226, 62, 0.48) 0 8%, transparent 9%),
+    linear-gradient(180deg, #a4f56d 0%, #3ac43e 61%, #187a27 100%);
+}
+
+.home-card {
+  border-radius: 22px;
+  box-shadow: 0 8px 0 rgba(14, 78, 124, 0.14), 0 18px 34px rgba(11, 59, 100, 0.18);
+}
+
+/* ---------- match screen: reserve stable regions ---------- */
+#game::before,
+#roomScreen::before { display: none; }
+
+#game > .table,
+#mpGame {
+  grid-template-rows: minmax(98px, auto) minmax(210px, 1fr) minmax(60px, auto) minmax(126px, auto);
+  row-gap: clamp(4px, 1.1vh, 10px);
+  padding: clamp(6px, 1.4vh, 12px) clamp(10px, 2.2vw, 26px) clamp(8px, 1.6vh, 14px);
+  isolation: isolate;
+}
+
+/* This is a decorative floor only; it never owns gameplay geometry. */
+#game > .table::before,
+#roomTable::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  opacity: 1;
+  border: 0;
+  border-radius: 0;
+  -webkit-mask: none;
+  mask: none;
+  background:
+    radial-gradient(44% 34% at 50% 48%, rgba(255, 255, 255, 0.28), transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(11, 84, 105, 0.2));
+}
+
+.topbar {
+  padding-inline: clamp(10px, 2.2vw, 28px);
+}
+
+.topbar .btn-ghost {
+  min-height: 38px;
+  padding: 0.35rem 0.85rem;
+}
+
+.round-chip {
+  min-width: 126px;
+  padding: 0.3rem 0.7rem;
+}
+
+/* top player's zone is compact and informational */
+#game > .table > .opponent-zone,
+#mpGame > .opponent-zone {
+  position: relative;
+  z-index: 2;
+  min-height: 98px;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.8vw, 18px);
+  padding: 0;
+}
+
+#game > .table > .opponent-zone {
+  flex-direction: row;
+}
+
+#game > .table > .opponent-zone .seat,
+#mpGame > .opponent-zone .seat {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+
+#game > .table > .opponent-zone .seat .seat-info,
+#mpGame > .opponent-zone .seat .seat-info {
+  text-align: left;
+}
+
+.seat .seat-info {
+  background: rgba(9, 43, 54, 0.68);
+  padding: 4px 9px 5px;
+}
+
+.seat-name { max-width: 145px; }
+
+.opponent-hand {
+  order: 2;
+  min-height: 76px;
+  padding-top: 0;
+  align-items: center;
+}
+
+.opponent-hand .card {
+  width: clamp(29px, 4vw, 44px);
+  height: calc(clamp(29px, 4vw, 44px) * 1.46);
+  margin-left: clamp(-17px, -1.4vw, -10px);
+  transform-origin: 50% 116%;
+}
+
+/* shared table: draw/active discard are the sole focal point */
+.center-zone {
+  min-height: 210px;
+  height: 100%;
+  align-items: center;
+  align-content: center;
+  gap: clamp(1.8rem, 8vw, 5.6rem);
+  padding: clamp(34px, 8vh, 58px) clamp(14px, 4vw, 42px) clamp(18px, 4vh, 34px);
+}
+
+.center-zone::before {
+  width: min(94%, 720px);
+  height: min(86%, 390px);
+  transform: translate(-50%, -50%);
+  border-radius: 42% / 30%;
+  background:
+    radial-gradient(ellipse at 35% 26%, rgba(255, 255, 255, 0.2), transparent 36%),
+    radial-gradient(ellipse at 50% 55%, #2ba67e 0%, var(--table-felt) 55%, var(--table-felt-deep) 100%);
+  box-shadow:
+    0 0 0 clamp(6px, 1vw, 11px) #f5c765,
+    0 0 0 clamp(10px, 1.6vw, 17px) #965421,
+    0 18px 24px rgba(10, 51, 83, 0.28),
+    inset 0 -18px 30px rgba(0, 30, 25, 0.3);
+}
+
+.center-zone::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: min(78%, 520px);
+  height: min(58%, 220px);
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 42% / 34%;
+  pointer-events: none;
+}
+
+.pile-group,
+.discard { z-index: 1; }
+
+.pile-group { transform: translateY(6px); }
+.center-zone > .discard { margin-bottom: 0; }
+
+.discard {
+  width: calc(var(--card-w) * 1.44);
+  height: calc(var(--card-h) * 1.44);
+}
+
+.card.back.draw-pile {
+  width: calc(var(--card-w) * 1.04);
+  height: calc(var(--card-h) * 1.04);
+}
+
+.turn-banner {
+  top: clamp(2px, 2.2vh, 16px);
+  z-index: 3;
+  font-size: clamp(0.64rem, 1.8vw, 0.82rem);
+}
+
+/* The verbal dealer bubble duplicated the turn prompt and covered the table.
+   The existing toast/announcement system still communicates game events. */
+.bubble { display: none !important; }
+
+.announce {
+  top: 22%;
+  z-index: 55;
+}
+
+/* game action rail stays immediately above the thumb zone */
+#game > .table > .player-zone > .action-row,
+#mpGame > .player-zone > .action-row {
+  grid-row: 3;
+  grid-column: 1;
+  width: min(100%, 700px);
+  margin-inline: auto;
+  align-self: center;
+}
+
+.action-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 58px;
+  padding: 0 clamp(4px, 1.5vw, 14px);
+}
+
+.draw-hint {
+  background: rgba(11, 56, 71, 0.76);
+  border: 2px solid rgba(255, 255, 255, 0.36);
+  font-size: clamp(0.7rem, 2vw, 0.86rem);
+  max-width: 100%;
+}
+
+.btn.btn-uno {
+  width: clamp(68px, 9vw, 84px);
+  height: clamp(68px, 9vw, 84px);
+  min-width: clamp(68px, 9vw, 84px);
+  min-height: clamp(68px, 9vw, 84px);
+}
+
+/* the player portrait and their hand share the final grid region */
+#game > .table > .player-zone > .seat.you,
+#mpGame > .player-zone > .seat.you,
+#game > .table > .player-zone > .hand,
+#mpGame > .player-zone > .hand {
+  grid-row: 4;
+  grid-column: 1;
+}
+
+.seat.you {
+  align-self: end;
+  justify-self: start;
+  z-index: 3;
+  margin: 0 0 6px clamp(2px, 1vw, 10px);
+}
+
+.hand {
+  align-self: end;
+  min-height: calc(var(--card-h) + 20px);
+  padding: 8px 10px 2px clamp(70px, 10vw, 104px);
+  overflow: visible;
+}
+
+.hand .card {
+  transform-origin: 50% 125%;
+}
+
+/* decorative character portraits stay modest, the cards remain primary */
+.seat-ring,
+.seat-ring svg { width: 52px; height: 52px; }
+
+.avatar {
+  inset: 5px;
+}
+
+.avatar.big { border-color: #fff; }
+
+/* Multiplayer gets an orderly upper arc without moving game elements. */
+#mpOpponents {
+  justify-content: center;
+  gap: clamp(8px, 2vw, 22px);
+}
+
+/* dialog surfaces retain the game-world material language */
+.modal,
+.chat-panel {
+  border-radius: 24px;
+  border-width: 5px;
+}
+
+@media (orientation: landscape) and (max-height: 620px) {
+  #game > .table,
+  #mpGame {
+    grid-template-columns: minmax(180px, 27%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(58px, auto) minmax(112px, auto);
+    column-gap: clamp(12px, 2.4vw, 26px);
+  }
+
+  #game > .table > .opponent-zone,
+  #mpGame > .opponent-zone {
+    grid-row: 1 / -1;
+    grid-column: 1;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #game > .table > .opponent-zone .seat,
+  #mpGame > .opponent-zone .seat { flex-direction: column; }
+
+  #game > .table > .opponent-zone .seat .seat-info,
+  #mpGame > .opponent-zone .seat .seat-info { text-align: center; }
+
+  .opponent-hand { order: 0; }
+
+  #game > .table > .center-zone,
+  #mpGame > .center-zone { grid-row: 1; grid-column: 2; }
+
+  #game > .table > .player-zone > .action-row,
+  #mpGame > .player-zone > .action-row { grid-row: 2; grid-column: 2; }
+
+  #game > .table > .player-zone > .seat.you,
+  #mpGame > .player-zone > .seat.you,
+  #game > .table > .player-zone > .hand,
+  #mpGame > .player-zone > .hand { grid-row: 3; grid-column: 2; }
+
+  .center-zone {
+    min-height: 0;
+    padding-block: 20px;
+  }
+
+  .center-zone::before {
+    width: min(86%, 620px);
+    height: min(84%, 260px);
+    border-radius: 34% / 30%;
+  }
+
+  .hand {
+    min-height: calc(var(--card-h) + 12px);
+    padding-left: clamp(60px, 9vw, 88px);
+  }
+
+  .seat.you { margin-bottom: 2px; }
+  .announce { top: 8px; }
+}
+
+@media (max-width: 560px) {
+  #game > .table,
+  #mpGame {
+    grid-template-rows: minmax(90px, auto) minmax(200px, 1fr) 60px minmax(118px, auto);
+  }
+
+  #game > .table > .opponent-zone {
+    gap: 5px;
+  }
+
+  #game > .table > .opponent-zone .seat {
+    gap: 4px;
+  }
+
+  .seat-ring,
+  .seat-ring svg { width: 48px; height: 48px; }
+
+  .seat-name { max-width: 92px; }
+
+  .opponent-hand .card {
+    width: clamp(27px, 8vw, 34px);
+    height: calc(clamp(27px, 8vw, 34px) * 1.46);
+    margin-left: -14px;
+  }
+
+  .center-zone {
+    gap: clamp(1.35rem, 7vw, 2.1rem);
+    padding-inline: 12px;
+  }
+
+  .center-zone::before {
+    width: 92%;
+    height: 78%;
+    border-radius: 42% / 28%;
+  }
+
+  .hand {
+    padding-left: 64px;
+    padding-right: 4px;
+  }
+
+  .btn.btn-uno {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+    min-height: 68px;
+  }
+
+  .mode-card { border-width: 5px; }
+}
+
+@media (max-width: 360px) {
+  #game > .table,
+  #mpGame {
+    grid-template-rows: 88px minmax(190px, 1fr) 58px minmax(108px, auto);
+  }
+
+  .draw-hint { font-size: 0.65rem; }
+  .seat.you { transform: scale(0.9); transform-origin: bottom left; }
+  .hand { padding-left: 58px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-card { transition: none; }
+}
